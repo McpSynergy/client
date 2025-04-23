@@ -1,8 +1,8 @@
-import { z } from 'zod';
+import { z } from '@zod/mini';
 
 
 export type SchemaObject = {
-  [key: string]: z.ZodType;
+  [key: string]: z.ZodMiniType;
 };
 
 export {
@@ -26,14 +26,8 @@ export class ClientCore<Props = any> {
         data: validatedData
       };
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Validation error:', error.errors);
-        }
-        return {
-          success: false,
-          errors: error.errors
-        };
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Validation error:', error);
       }
       throw error;
     }
