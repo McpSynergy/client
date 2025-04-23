@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useEffect, useRef } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 
 import { ClientCore, SchemaObject } from "@mcp-synergy/client-core";
 
@@ -35,13 +35,6 @@ const useDynamicComponent = (path: string) => {
 };
 
 const useDynamicRender = () => {
-  const clientCoreRef = useRef<ClientCore | null>(null);
-
-  useEffect(() => {
-    if (!clientCoreRef.current) {
-      clientCoreRef.current = new ClientCore();
-    }
-  }, []);
   const dynamicRender = ({
     path,
     props = {},
@@ -51,9 +44,10 @@ const useDynamicRender = () => {
   }: DynamicRenderProps) => {
     const { hasError } = useErrorBoundary();
     const DynamicComponent = useDynamicComponent(path);
-    const valid = clientCoreRef.current?.validateProps(props, propsSchema);
+    const clientCore = new ClientCore();
+    const valid = clientCore?.validateProps(props, propsSchema);
 
-    if (hasError || !valid?.success) {
+    if (hasError || (!!valid && !valid?.success)) {
       return errorFallback;
     }
 

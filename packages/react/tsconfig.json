@@ -1,12 +1,10 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "declarationDir": "./dist/types",
-    "declaration": true,
+    "outDir": "./dist", //输出文件
     "lib": ["esnext", "dom"],
     "baseUrl": "./",
-    "rootDir": "./src",
+    "rootDir": "./",
     "types": ["node", "vitest", "vitest/globals"],
     "paths": {
       "@/*": ["src/*"]

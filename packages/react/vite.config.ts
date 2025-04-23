@@ -4,8 +4,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react(), dts({
-    tsconfigPath: './tsconfig.json',
-    outDir: 'dist/types',
+    tsconfigPath: './tsconfig.json'
   }),],
   build: {
     lib: {

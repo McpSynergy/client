@@ -4,6 +4,10 @@ import { z } from 'zod';
 export type SchemaObject = {
   [key: string]: z.ZodType;
 };
+
+export {
+  z
+}
 export class ClientCore<Props = any> {
   // zod 校验 props 属性是否合法
   public validateProps(props: Props, schema?: SchemaObject) {
@@ -23,6 +27,9 @@ export class ClientCore<Props = any> {
       };
     } catch (error) {
       if (error instanceof z.ZodError) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Validation error:', error.errors);
+        }
         return {
           success: false,
           errors: error.errors
