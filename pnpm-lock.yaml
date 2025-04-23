@@ -62,10 +62,8 @@ importers:
   packages-private/client-core:
     specifiers:
       '@zod/mini': 4.0.0-beta.0
-      zod: ^3.24.3
     dependencies:
       '@zod/mini': 4.0.0-beta.0
-      zod: 3.24.3
 
   packages/react:
     specifiers:
@@ -2596,7 +2594,3 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
-
-  /zod/3.24.3:
-    resolution: {integrity: sha512-HhY1oqzWCQWuUqvBFnsyrtZRhyPeR7SUGv+C4+MsisMuVfSPx8HpwWqH8tRahSlt6M3PiFAcoeFhZAqIXTxoSg==}
-    dev: false
