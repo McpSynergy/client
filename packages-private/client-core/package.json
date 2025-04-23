@@ -1,0 +1,17 @@
+{
+  "name": "@mcp-synergy/client-core",
+  "private": true,
+  "description": "",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@zod/mini": "4.0.0-beta.0"
+  }
+}
