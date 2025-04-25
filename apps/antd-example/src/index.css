@@ -1,0 +1,73 @@
+/* Reset CSS */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  background-color: #121212;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  html,
+  body {
+    background-color: #121212;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+
+  html,
+  body {
+    background-color: #ffffff;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+body #root {
+  height: 100%;
+}
+
+/* 移除列表样式 */
+ul,
+ol {
+  list-style: none;
+}
+
+/* 移除链接下划线 */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* 图片默认样式 */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 表单元素样式重置 */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 100%;
+  line-height: 1.15;
+  margin: 0;
+}
