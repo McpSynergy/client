@@ -2,21 +2,24 @@
   "name": "@mcp-synergy/react",
   "version": "0.0.1",
   "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/src/index.d.ts",
-  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc -b && vite build"
+    "build": "tsc -b && vite build",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@mcp-synergy/client-core": "workspace:*",
     "react-error-boundary": "^5.0.0"
   },
+  "devDependencies": {
+    "react": "^19.1.0"
+  },
   "peerDependencies": {
-    "react": "16.x"
+    "react": ">=16.13.1"
   }
 }

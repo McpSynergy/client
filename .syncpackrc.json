@@ -1,0 +1,27 @@
+{
+  "semverGroups": [
+    {
+      "label": "use exact version numbers in dependencies & devDependencies",
+      "packages": ["**"],
+      "dependencyTypes": ["prod", "dev"],
+      "dependencies": ["**"],
+      "range": "^"
+    }
+  ],
+  "versionGroups": [
+    {
+      "label": "Workspace packages",
+      "packages": ["**"],
+      "dependencyTypes": ["prod"],
+      "dependencies": ["@mcp-synergy/**"],
+      "pinVersion": "workspace:*"
+    },
+    {
+      "label": "For @mcp-synergy/react's peer dependencies",
+      "packages": ["@mcp-synergy/react"],
+      "dependencyTypes": ["peer"],
+      "dependencies": ["react"],
+      "range": ">=16.13.1"
+    }
+  ]
+}
