@@ -4,7 +4,12 @@ import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), MCPComp()],
+  plugins: [
+    react(),
+    MCPComp({
+      hotUpdateEndpoint: 'http://localhost:3000/update-mcp-comps',
+    }),
+  ],
   server: {
     proxy: {
       '^/message': {

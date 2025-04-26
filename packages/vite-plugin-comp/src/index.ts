@@ -17,12 +17,14 @@ export interface MCPCompOptions {
   propertyTags?: Map<string, CommentPropertyTag>;
   /** Whether to use lazy imports */
   lazyImport?: boolean;
+  /** Endpoint to notify when hot updates occur */
+  hotUpdateEndpoint?: string;
 }
 
 export interface MCPCompData {
   name: string;
   filePath: string;
-  propSchema: Record<string, any>;
+  inputSchema: Record<string, any>;
   [key: string]: any; // Allow additional properties
 }
 
@@ -219,10 +221,34 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     componentTags = MCPCompTags,
     propertyTags = MCPPropTags,
     lazyImport = true,
+    hotUpdateEndpoint,
   } = options;
 
-  let componentDataList: MCPCompData[] = [];
+  let componentDataMap: Map<string, MCPCompData> = new Map();
   let tsProgram: ts.Program | null = null;
+
+  // Helper to send messages to the endpoint
+  async function sendMessage(data: any) {
+    if (!hotUpdateEndpoint) return;
+
+    try {
+      const response = await fetch(hotUpdateEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        console.error(`Failed to send message: ${response.statusText}`);
+      } else {
+        console.log('sent message to ', hotUpdateEndpoint);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  }
 
   // Helper to get base filename without extension
   function getComponentNameFromFile(filePath: string) {
@@ -279,7 +305,11 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       const componentInfo: MCPCompData = {
         name: componentName,
         filePath: filePath,
-        propSchema: {},
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
       };
 
       // Process additional component tags
@@ -338,17 +368,13 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         else jsonSchemaType = 'object';
 
         // Initialize prop schema
-        componentInfo.propSchema[propName] = {
-          type: 'object',
-          properties: {
-            [propName]: {
-              type: jsonSchemaType,
-              description: description,
-              ...(isOptional ? { required: false } : { required: true }),
-            },
-          },
-          required: isOptional ? [] : [propName],
+        componentInfo.inputSchema.properties[propName] = {
+          type: jsonSchemaType,
+          description: description,
         };
+        if (!isOptional) {
+          componentInfo.inputSchema.required.push(propName);
+        }
 
         // Process additional property tags
         for (const tag of propTags) {
@@ -360,24 +386,23 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
           // Handle special JSON Schema properties
           if (tagConfig.to === 'default') {
-            componentInfo.propSchema[propName].properties[propName].default =
+            componentInfo.inputSchema[propName].properties[propName].default =
               value;
           } else if (tagConfig.to === 'enum') {
-            componentInfo.propSchema[propName].properties[propName].enum = value
-              .split(',')
-              .map((v) => v.trim());
+            componentInfo.inputSchema[propName].properties[propName].enum =
+              value.split(',').map((v) => v.trim());
           } else if (tagConfig.to === 'minimum' || tagConfig.to === 'maximum') {
-            componentInfo.propSchema[propName].properties[propName][
+            componentInfo.inputSchema[propName].properties[propName][
               tagConfig.to
             ] = Number(value);
           } else if (tagConfig.to === 'pattern') {
-            componentInfo.propSchema[propName].properties[propName].pattern =
+            componentInfo.inputSchema[propName].properties[propName].pattern =
               value;
           } else if (tagConfig.to === 'format') {
-            componentInfo.propSchema[propName].properties[propName].format =
+            componentInfo.inputSchema[propName].properties[propName].format =
               value;
           } else {
-            componentInfo.propSchema[propName].properties[propName][
+            componentInfo.inputSchema[propName].properties[propName][
               tagConfig.to
             ] = value;
           }
@@ -394,21 +419,31 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
   // Helper to update the component data list
   function updateComponentData(newData: MCPCompData[]) {
-    if (!componentDataList) {
-      componentDataList = [];
+    if (!componentDataMap) {
+      componentDataMap = new Map();
     }
-    componentDataList = componentDataList.filter(
-      (item) => item.filePath !== newData[0]?.filePath,
-    );
-    componentDataList.push(...newData);
+
+    // Remove existing entries for the same file
+    for (const [key, value] of componentDataMap.entries()) {
+      if (value.filePath === newData[0]?.filePath) {
+        componentDataMap.delete(key);
+      }
+    }
+
+    // Add new entries
+    for (const data of newData) {
+      componentDataMap.set(data.name, data);
+    }
   }
 
   // Helper to remove data for a file (e.g., if @mcp-comp removed)
   function removeComponentData(filePath: string) {
-    if (!componentDataList) return;
-    componentDataList = componentDataList.filter(
-      (item) => item.filePath !== filePath,
-    );
+    if (!componentDataMap) return;
+    for (const [key, value] of componentDataMap.entries()) {
+      if (value.filePath === filePath) {
+        componentDataMap.delete(key);
+      }
+    }
   }
 
   return {
@@ -424,7 +459,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         target: ts.ScriptTarget.ESNext,
       });
       const checker = tsProgram.getTypeChecker();
-      componentDataList = []; // Reset
+      componentDataMap = new Map(); // Reset
 
       for (const file of files) {
         try {
@@ -439,8 +474,16 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       }
 
       console.log(
-        `MCP Synergy Comp Plugin: Found ${componentDataList.length} components.`,
+        `MCP Synergy Comp Plugin: Found ${componentDataMap.size} components.`,
       );
+
+      await sendMessage({
+        type: 'build-start',
+        data: Array.from(componentDataMap.values()).map(
+          ({ filePath, ...rest }) => rest,
+        ),
+        timestamp: Date.now(),
+      });
     },
 
     resolveId(id) {
@@ -456,7 +499,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     load(id) {
       if (id === '\0virtual:mcp-comp/data.json') {
         // Filter out filePath before stringifying for the client
-        const exportList = componentDataList?.map(
+        const exportList = Array.from(componentDataMap.values()).map(
           ({ filePath, ...rest }) => rest,
         );
         return JSON.stringify(exportList, null, 2);
@@ -465,7 +508,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       if (id === '\0virtual:mcp-comp/imports') {
         if (!lazyImport) {
           // Generate direct imports
-          const imports = componentDataList
+          const imports = Array.from(componentDataMap.values())
             .map((comp) => {
               // Get the directory of the virtual module
               const virtualModuleDir = path.dirname(id);
@@ -477,13 +520,13 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
               return `import ${comp.name} from '${relativePath}';`;
             })
             .join('\n');
-          const exports = `export { ${componentDataList
-            .map((comp) => comp.name)
-            .join(', ')} };`;
+          const exports = `export { ${Array.from(componentDataMap.keys()).join(
+            ', ',
+          )} };`;
           return `${imports}\n${exports}`;
         } else {
           // Generate lazy imports
-          const lazyImports = componentDataList
+          const lazyImports = Array.from(componentDataMap.values())
             .map((comp) => {
               // Get the directory of the virtual module
               const virtualModuleDir = path.dirname(id);
@@ -495,9 +538,9 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
               return `const ${comp.name} = () => import('${relativePath}');`;
             })
             .join('\n');
-          const exports = `export default { ${componentDataList
-            .map((comp) => comp.name)
-            .join(', ')} };`;
+          const exports = `export default { ${Array.from(
+            componentDataMap.keys(),
+          ).join(', ')} };`;
           return `${lazyImports}\n${exports}`;
         }
       }
@@ -511,8 +554,10 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       server,
       read,
     }): Promise<ModuleNode[] | void> {
+      // Convert file path to relative path
+      const relativeFilePath = path.relative(process.cwd(), file);
       const isIncluded = (await glob(include, { ignore: exclude })).includes(
-        file,
+        relativeFilePath,
       );
 
       if (isIncluded && file.endsWith('.tsx')) {
@@ -529,7 +574,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         const componentInfos = await parseFile(file, checker);
 
         let changed = false;
-        const existingData = componentDataList?.filter(
+        const existingData = Array.from(componentDataMap.values()).filter(
           (item) => item.filePath === file,
         );
 
@@ -578,12 +623,31 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
             ],
           });
 
+          // Send hot update message
+          await sendMessage({
+            type: 'hot-update',
+            file,
+            data: componentInfos.length > 0 ? componentInfos : null,
+            timestamp: Date.now(),
+          });
+
           const modules = [dataModule, importsModule].filter(
             (m): m is ModuleNode => m !== undefined,
           );
           return modules;
         }
       }
+    },
+
+    // Handle build completion
+    async buildEnd() {
+      await sendMessage({
+        type: 'build-complete',
+        data: Array.from(componentDataMap.values()).map(
+          ({ filePath, ...rest }) => rest,
+        ),
+        timestamp: Date.now(),
+      });
     },
   };
 }

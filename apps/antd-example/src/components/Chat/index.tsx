@@ -44,7 +44,7 @@ const Chat = () => {
   // Agent for request
   const [agent] = useXAgent({
     request: async ({ message }, { onSuccess, onError }) => {
-      fetch('/message', {
+      fetch('http://localhost:3000/message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,15 +127,14 @@ const Chat = () => {
             if (meta) {
               console.log('meta', meta);
 
+              const props = JSON.parse(meta?.componentProps);
+
               return (
                 <>
                   {renderMarkdown(content?.content ?? content)}
 
                   <Suspense fallback={'loading...'}>
-                    <ChatComponent
-                      name={meta.toolName}
-                      props={{ ...meta?.componentProps }}
-                    />
+                    <ChatComponent name={meta.toolName} props={props} />
                   </Suspense>
                 </>
               );
