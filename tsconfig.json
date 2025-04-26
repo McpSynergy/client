@@ -21,7 +21,11 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "skipLibCheck": true,
-    "types": ["node", "vitest", "vitest/globals"]
+    "types": ["node", "vitest", "vitest/globals"],
+    "paths": {
+      // For development
+      "@mcp-synergy/*": ["./packages/*/src"]
+    }
   },
   "exclude": ["node_modules"]
 }
