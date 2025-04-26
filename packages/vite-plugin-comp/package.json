@@ -1,0 +1,21 @@
+{
+  "name": "@mcp-synergy/vite-plugin-comp",
+  "version": "0.0.1",
+  "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vite": "^6.3.3"
+  },
+  "peerDependencies": {
+    "vite": ">=6.3.3"
+  }
+}

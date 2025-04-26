@@ -34,6 +34,7 @@ importers:
       '@ant-design/icons': ^6.0.0
       '@ant-design/x': ^1.1.1
       '@eslint/js': ^9.22.0
+      '@mcp-synergy/vite-plugin-comp': workspace:*
       '@types/react': ^19.1.2
       '@types/react-dom': ^19.1.2
       '@vitejs/plugin-react-swc': ^3.8.0
@@ -59,6 +60,7 @@ importers:
       react-markdown: 10.1.0_dl52hbs33murufky2ojig52vdq
     devDependencies:
       '@eslint/js': 9.22.0
+      '@mcp-synergy/vite-plugin-comp': link:../../packages/vite-plugin-comp
       '@types/react': 19.1.2
       '@types/react-dom': 19.1.2_@types+react@19.1.2
       '@vitejs/plugin-react-swc': 3.8.0_vite@6.3.3
@@ -119,6 +121,12 @@ importers:
       react-error-boundary: 5.0.0_react@19.1.0
     devDependencies:
       react: 19.1.0
+
+  packages/vite-plugin-comp:
+    specifiers:
+      vite: ^6.3.3
+    devDependencies:
+      vite: 6.3.3
 
 packages:
 

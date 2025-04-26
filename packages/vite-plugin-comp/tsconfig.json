@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist", //输出文件
+    "lib": ["esnext", "dom"],
+    "rootDir": "src",
+    "types": ["node", "vitest", "vitest/globals"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "lib", "es"]
+}

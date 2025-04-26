@@ -12,7 +12,7 @@
     {
       "label": "Workspace packages",
       "packages": ["**"],
-      "dependencyTypes": ["prod"],
+      "dependencyTypes": ["prod", "dev"],
       "dependencies": ["@mcp-synergy/**"],
       "pinVersion": "workspace:*"
     },
