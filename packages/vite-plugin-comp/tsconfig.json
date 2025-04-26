@@ -1,11 +1,12 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist", //输出文件
     "lib": ["esnext", "dom"],
-    "rootDir": "src",
-    "types": ["node", "vitest", "vitest/globals"]
+    "outDir": "./dist", //输出文件
+    "rootDir": "./src",
+    "types": ["node", "react"],
+    "emitDeclarationOnly": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "lib", "es"]
+  "exclude": ["node_modules", "dist", "lib", "es"],
+  "include": ["src", "types.d.ts"]
 }

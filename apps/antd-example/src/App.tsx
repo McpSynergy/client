@@ -1,7 +1,8 @@
-import React from "react";
-import { Flex, Layout } from "antd";
-import Chat from "./components/Chat";
-import UserProfile from "./components/UserProfile";
+import { Flex, Layout } from 'antd';
+import React from 'react';
+import Chat from './components/Chat';
+// import UserProfile from './components/UserProfile';
+import { ChatComponent } from '@mcp-synergy/react';
 
 const { Content } = Layout;
 
@@ -9,16 +10,16 @@ const App: React.FC = () => {
   return (
     <Layout
       style={{
-        height: "100%",
+        height: '100%',
         // backgroundColor: " #121212",
-        color: "white",
+        color: 'white',
       }}
     >
       <Content>
         <Flex
           style={{
-            width: "100%",
-            height: "100%",
+            width: '100%',
+            height: '100%',
           }}
           gap={16}
         >
@@ -32,17 +33,39 @@ const App: React.FC = () => {
               // borderRadius: borderRadiusLG,
             }}
           >
-            <UserProfile
+            <ChatComponent
+              name='UserProfile'
+              props={{
+                user: {
+                  name: 'John Do123123e',
+                  title: 'Senior Developer',
+                  avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=1',
+                  email: 'john.doe@example.com',
+                  phone: '+1 234 567 890',
+                  skills: [
+                    { name: 'JavaScript', color: 'gold' },
+                    { name: 'React', color: 'cyan' },
+                    { name: 'Node.js', color: 'green' },
+                  ],
+                  stats: {
+                    projects: 24,
+                    followers: 1489,
+                    following: 583,
+                  },
+                },
+              }}
+            />
+            {/* <UserProfile
               user={{
-                name: "John Doe",
-                title: "Senior Developer",
-                avatar: "https://api.dicebear.com/7.x/miniavs/svg?seed=1",
-                email: "john.doe@example.com",
-                phone: "+1 234 567 890",
+                name: 'John Doe',
+                title: 'Senior Developer',
+                avatar: 'https://api.dicebear.com/7.x/miniavs/svg?seed=1',
+                email: 'john.doe@example.com',
+                phone: '+1 234 567 890',
                 skills: [
-                  { name: "JavaScript", color: "gold" },
-                  { name: "React", color: "cyan" },
-                  { name: "Node.js", color: "green" },
+                  { name: 'JavaScript', color: 'gold' },
+                  { name: 'React', color: 'cyan' },
+                  { name: 'Node.js', color: 'green' },
                 ],
                 stats: {
                   projects: 24,
@@ -50,7 +73,7 @@ const App: React.FC = () => {
                   following: 583,
                 },
               }}
-            />
+            /> */}
           </div>
           <div
             style={{

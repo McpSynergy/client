@@ -13,4 +13,6 @@ export default defineConfig({
       },
     },
   },
+  // for turbo
+  clearScreen: false,
 });

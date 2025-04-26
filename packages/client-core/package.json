@@ -10,7 +10,8 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "tsc -b"
+    "build": "vite build",
+    "dev": "vite build --watch"
   },
   "dependencies": {
     "@zod/mini": "4.0.0-beta.0"
