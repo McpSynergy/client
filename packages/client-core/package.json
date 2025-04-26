@@ -1,13 +1,14 @@
 {
   "name": "@mcp-synergy/client-core",
+  "version": "0.0.1",
   "private": true,
   "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "scripts": {
     "build": "tsc -b"
   },

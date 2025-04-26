@@ -3,14 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "pnpm --filter ./packages/* run build"
+    "build": "pnpm --filter ./packages/* run build",
+    "postinstall": "syncpack list-mismatches",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@types/node": "^22.14.1",
     "@types/react": "^19.1.2",
@@ -19,8 +20,11 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "typescript": "^5.8.3",
-    "vite": "^6.3.2",
+    "vite": "^6.3.3",
     "vite-plugin-dts": "^4.5.3",
     "vitest": "^3.1.2"
+  },
+  "devDependencies": {
+    "syncpack": "^13.0.3"
   }
 }
