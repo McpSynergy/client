@@ -1,34 +1,52 @@
 import {
   EditOutlined,
+  EnvironmentOutlined,
   MailOutlined,
   PhoneOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Avatar, Button, Card, Col, List, Row, Tag } from 'antd';
 
+/**
+ * @mcp-comp UserProfile
+ * @mcp-prop-path user.skills
+ */
 interface Skill {
   name: string;
   color?: string;
 }
 
+/**
+ * @mcp-comp UserProfile
+ * @mcp-prop-path user.stats
+ */
 interface Stats {
   projects: number;
   followers: number;
   following: number;
 }
 
+/**
+ * @mcp-comp UserProfile
+ * @mcp-prop-path user
+ */
 export interface User {
+  /** @mcp-prop */
   name: string;
+  /** @mcp-prop */
   title: string;
+  /** @mcp-prop */
   avatar: string;
+  /** @mcp-prop */
   email: string;
+  /** @mcp-prop */
   phone?: string;
+  /** @mcp-prop */
   skills: Skill[];
+  /** @mcp-prop */
   stats: Stats;
-}
-
-export interface UserProfileProps {
-  user: User;
+  /** @mcp-prop */
+  company: string;
 }
 
 /**
@@ -36,12 +54,27 @@ export interface UserProfileProps {
  * @mcp-description Show user profile
  * @mcp-server-name mcp-component-render
  */
-export interface MCPUserProfileProps extends UserProfileProps {
-  /** @mcp-prop User name */
-  userName: string;
+export interface UserProfileProps {
+  /** @mcp-prop User */
+  user: User;
 }
 
-const UserProfile = ({ user }: { user: User }) => {
+const UserProfile = ({
+  user = {
+    stats: {
+      projects: 0,
+      followers: 0,
+      following: 0,
+    },
+    skills: [],
+    avatar: '',
+    email: '',
+    phone: '',
+    name: '',
+    title: '',
+    company: '',
+  },
+}: UserProfileProps) => {
   // 用户统计数据展示
   const statsData = [
     { title: 'Projects', value: user.stats.projects },
@@ -51,7 +84,7 @@ const UserProfile = ({ user }: { user: User }) => {
 
   return (
     <Card
-      title='User Profile'
+      title='User Profile1'
       actions={[
         <Button key='edit' icon={<EditOutlined />} onClick={() => {}}>
           Edit Profile
@@ -104,6 +137,10 @@ const UserProfile = ({ user }: { user: User }) => {
             <p>
               <PhoneOutlined style={{ marginRight: 8 }} />
               {user.phone || 'Not provided'}
+            </p>
+            <p>
+              <EnvironmentOutlined style={{ marginRight: 8 }} />
+              {user.company || 'Not provided'}
             </p>
           </div>
 

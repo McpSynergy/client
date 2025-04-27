@@ -19,6 +19,8 @@ export interface MCPCompOptions {
   lazyImport?: boolean;
   /** Endpoint to notify when hot updates occur */
   hotUpdateEndpoint?: string;
+  /** Whether to enable debug mode */
+  debug?: boolean;
 }
 
 export interface MCPCompData {
@@ -98,6 +100,13 @@ export const MCPPropTags = new Map<string, CommentPropertyTag>([
     {
       to: 'name',
       description: 'Property name',
+    },
+  ],
+  [
+    'mcp-prop-path',
+    {
+      to: 'path',
+      description: 'Nested property path',
     },
   ],
   [
@@ -214,6 +223,20 @@ export const MCPPropTags = new Map<string, CommentPropertyTag>([
   ],
 ]);
 
+interface SchemaProperty {
+  type: string | string[];
+  description?: string;
+  default?: any;
+  enum?: any[];
+  minimum?: number;
+  maximum?: number;
+  pattern?: string;
+  format?: string;
+  properties?: Record<string, SchemaProperty>;
+  required?: string[];
+  items?: SchemaProperty;
+}
+
 export function MCPComp(options: MCPCompOptions = {}): Plugin {
   const {
     include = 'src/**/*.tsx',
@@ -222,10 +245,33 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     propertyTags = MCPPropTags,
     lazyImport = true,
     hotUpdateEndpoint,
+    debug = false,
   } = options;
 
   let componentDataMap: Map<string, MCPCompData> = new Map();
   let tsProgram: ts.Program | null = null;
+
+  // Helper to log debug information
+  function debugLog(message: string, data?: any) {
+    if (debug) {
+      console.log(`[MCP Comp Debug] ${message}`);
+      if (data) {
+        console.log(JSON.stringify(data, null, 2));
+      }
+    }
+  }
+
+  // Helper to map TypeScript types to JSON Schema types
+  function mapTypeToJsonSchema(typeString: string): string | string[] {
+    if (typeString === 'string') return 'string';
+    if (typeString === 'number') return 'number';
+    if (typeString === 'boolean') return 'boolean';
+    if (typeString.endsWith('[]')) return 'array';
+    if (typeString.includes('=>')) return 'function';
+    if (typeString === 'React.ReactNode' || typeString === 'JSX.Element')
+      return 'any';
+    return 'object';
+  }
 
   // Helper to send messages to the endpoint
   async function sendMessage(data: any) {
@@ -255,11 +301,154 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     return path.basename(filePath, path.extname(filePath));
   }
 
+  // New data structure to store interfaces by their mcp-comp and mcp-prop-path
+  interface StoredInterface {
+    interface: ts.InterfaceDeclaration;
+    componentName: string;
+    propPath?: string;
+  }
+  // Use Map for better lookup performance
+  const storedInterfaces = new Map<string, StoredInterface>();
+
+  // Helper to get the key for the Map
+  function getInterfaceKey(componentName: string, propPath?: string): string {
+    return propPath ? `${componentName}:${propPath}` : componentName;
+  }
+
+  // Helper to process a type node recursively
+  function processTypeNode(
+    typeNode: ts.TypeNode,
+    componentName: string,
+    sourceFile: ts.SourceFile,
+    storedInterfaces: Map<string, StoredInterface>,
+    currentPath?: string,
+  ): SchemaProperty {
+    debugLog('Processing type node:', {
+      type: typeNode.getText(sourceFile),
+      currentPath,
+    });
+
+    if (ts.isTypeReferenceNode(typeNode)) {
+      const typeName = typeNode.getText(sourceFile);
+      debugLog('Found type reference:', typeName);
+
+      // Look for a matching interface using the current path
+      const key = getInterfaceKey(componentName, currentPath);
+      const matchingInterface = storedInterfaces.get(key);
+
+      if (matchingInterface) {
+        debugLog('Found matching interface for path:', currentPath);
+        const properties: Record<string, SchemaProperty> = {};
+        const required: string[] = [];
+
+        for (const nestedMember of matchingInterface.interface.members) {
+          if (
+            !ts.isPropertySignature(nestedMember) ||
+            !nestedMember.name ||
+            !ts.isIdentifier(nestedMember.name)
+          )
+            continue;
+
+          const nestedPropName = nestedMember.name.getText(sourceFile);
+          const nestedPropPath = currentPath
+            ? `${currentPath}.${nestedPropName}`
+            : nestedPropName;
+
+          debugLog('Processing nested property:', {
+            name: nestedPropName,
+            path: nestedPropPath,
+            type: nestedMember.type?.getText(sourceFile),
+          });
+
+          if (nestedMember.type) {
+            const nestedSchema = processTypeNode(
+              nestedMember.type,
+              componentName,
+              sourceFile,
+              storedInterfaces,
+              nestedPropPath,
+            );
+            properties[nestedPropName] = nestedSchema;
+
+            if (!nestedMember.questionToken) {
+              required.push(nestedPropName);
+            }
+          }
+        }
+
+        return {
+          type: 'object',
+          properties,
+          required: required.length > 0 ? required : undefined,
+        };
+      }
+    }
+
+    // Handle array types
+    if (ts.isArrayTypeNode(typeNode)) {
+      const elementType = processTypeNode(
+        typeNode.elementType,
+        componentName,
+        sourceFile,
+        storedInterfaces,
+        currentPath,
+      );
+      return {
+        type: 'array',
+        items: elementType,
+      };
+    }
+
+    // Handle union types
+    if (ts.isUnionTypeNode(typeNode)) {
+      const types = typeNode.types.map((t) =>
+        processTypeNode(
+          t,
+          componentName,
+          sourceFile,
+          storedInterfaces,
+          currentPath,
+        ),
+      );
+      return {
+        type: types.map((t) => t.type).flat(),
+        description: 'Union type',
+      };
+    }
+
+    // Handle literal types
+    if (ts.isLiteralTypeNode(typeNode)) {
+      const literal = typeNode.literal;
+      if (ts.isStringLiteral(literal)) {
+        return { type: 'string', enum: [literal.text] };
+      } else if (ts.isNumericLiteral(literal)) {
+        return { type: 'number', enum: [Number(literal.text)] };
+      } else if (
+        literal.kind === ts.SyntaxKind.TrueKeyword ||
+        literal.kind === ts.SyntaxKind.FalseKeyword
+      ) {
+        return {
+          type: 'boolean',
+          enum: [literal.kind === ts.SyntaxKind.TrueKeyword],
+        };
+      }
+    }
+
+    // Default case: map the type to JSON schema
+    const typeString = typeNode.getText(sourceFile);
+    return {
+      type: mapTypeToJsonSchema(typeString),
+    };
+  }
+
   // Helper to parse a single file and extract MCP data
   async function parseFile(
     filePath: string,
     checker: ts.TypeChecker,
   ): Promise<MCPCompData[]> {
+    debugLog('--------------------------------');
+    debugLog('Parsing file: ' + filePath);
+    debugLog('--------------------------------');
     const fileContent = await fs.readFile(filePath, 'utf-8');
     const sourceFile = ts.createSourceFile(
       filePath,
@@ -269,38 +458,53 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     );
     const componentInfos: MCPCompData[] = [];
 
-    function visitNode(node: ts.Node) {
+    // First pass: collect all interfaces
+    function collectInterfaces(node: ts.Node) {
       if (!ts.isInterfaceDeclaration(node)) {
-        ts.forEachChild(node, visitNode);
+        ts.forEachChild(node, collectInterfaces);
         return;
       }
 
       const tags = ts.getJSDocTags(node);
       const mcpCompTag = tags.find((tag) => tag.tagName.text === 'mcp-comp');
-      if (!mcpCompTag) {
-        ts.forEachChild(node, visitNode);
-        return;
-      }
+      const mcpPropPathTag = tags.find(
+        (tag) => tag.tagName.text === 'mcp-prop-path',
+      );
 
-      let componentName = (mcpCompTag.comment || '').toString().trim();
+      if (mcpCompTag) {
+        let componentName = (mcpCompTag.comment || '').toString().trim();
+        const propPath = mcpPropPathTag
+          ? (mcpPropPathTag.comment || '').toString().trim()
+          : undefined;
 
-      // If no component name is provided and this is the first component in the file,
-      // use the filename as the component name
-      if (!componentName && componentInfos.length === 0) {
-        componentName = getComponentNameFromFile(filePath);
-      } else if (!componentName) {
-        throw new Error(
-          `@mcp-comp tag must have a value in file ${filePath}. ` +
-            `When multiple components are defined in one file, each component must have a unique name.`,
+        debugLog(
+          `Found interface with mcp-comp: ${componentName}${
+            propPath ? ` and mcp-prop-path: ${propPath}` : ''
+          }`,
+          { interfaceName: node.name?.getText(sourceFile) },
         );
+
+        const key = getInterfaceKey(componentName, propPath);
+        storedInterfaces.set(key, {
+          interface: node,
+          componentName,
+          propPath,
+        });
+      }
+    }
+
+    // Second pass: process the component interface and its properties
+    function processComponent(
+      node: ts.Node,
+      componentName: string,
+    ): MCPCompData {
+      if (!ts.isInterfaceDeclaration(node)) {
+        throw new Error('Expected an interface declaration');
       }
 
-      if (componentInfos.some((info) => info.name === componentName)) {
-        throw new Error(
-          `Duplicate component name "${componentName}" found in file ${filePath}. ` +
-            `Each component in a file must have a unique name.`,
-        );
-      }
+      debugLog(
+        `Processing component interface: ${node.name?.getText(sourceFile)}`,
+      );
 
       const componentInfo: MCPCompData = {
         name: componentName,
@@ -312,7 +516,8 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         },
       };
 
-      // Process additional component tags
+      // Process component tags
+      const tags = ts.getJSDocTags(node);
       for (const tag of tags) {
         const tagConfig = componentTags.get(tag.tagName.text);
         if (!tagConfig || tagConfig.to === 'name') continue;
@@ -321,62 +526,60 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         if (!value) continue;
 
         componentInfo[tagConfig.to] = value;
+        debugLog(`Set component ${tagConfig.to}: ${value}`);
       }
 
       // Process properties
       for (const member of node.members) {
-        if (!ts.isPropertySignature(member)) continue;
+        if (
+          !ts.isPropertySignature(member) ||
+          !member.name ||
+          !ts.isIdentifier(member.name)
+        )
+          continue;
 
+        const propName = member.name.getText(sourceFile);
         const propTags = ts.getJSDocTags(member);
         const mcpPropTag = propTags.find(
           (tag) => tag.tagName.text === 'mcp-prop',
         );
-        if (!mcpPropTag || !member.name || !ts.isIdentifier(member.name))
-          continue;
+        if (!mcpPropTag) continue;
 
-        const propName = member.name.getText(sourceFile);
         const description = (mcpPropTag.comment || '').toString().trim();
+        const isOptional = !!member.questionToken;
 
-        // Get type and optionality
-        const symbol = checker.getSymbolAtLocation(member.name);
-        let typeString = 'any';
-        let isOptional = !!member.questionToken;
+        debugLog(`Processing property: ${propName}`, {
+          description,
+          type: member.type?.getText(sourceFile),
+          isOptional,
+        });
 
-        if (symbol) {
-          const type = checker.getTypeOfSymbolAtLocation(symbol, member);
-          typeString = checker.typeToString(type, member);
-          if (typeString.includes('| undefined')) {
-            typeString = typeString.replace(' | undefined', '').trim();
-          }
-          if (symbol.flags & ts.SymbolFlags.Optional) {
-            isOptional = true;
-          }
+        let propSchema: SchemaProperty;
+
+        if (member.type) {
+          propSchema = processTypeNode(
+            member.type,
+            componentName,
+            sourceFile,
+            storedInterfaces,
+            propName,
+          );
+          propSchema.description = description;
+        } else {
+          propSchema = {
+            type: 'any',
+            description,
+          };
         }
 
-        // Map TypeScript types to JSON Schema types
-        let jsonSchemaType: string | string[] = 'any';
-        if (typeString === 'string') jsonSchemaType = 'string';
-        else if (typeString === 'number') jsonSchemaType = 'number';
-        else if (typeString === 'boolean') jsonSchemaType = 'boolean';
-        else if (typeString.endsWith('[]')) jsonSchemaType = 'array';
-        else if (typeString.includes('=>')) jsonSchemaType = 'function';
-        else if (
-          typeString === 'React.ReactNode' ||
-          typeString === 'JSX.Element'
-        )
-          jsonSchemaType = 'any';
-        else jsonSchemaType = 'object';
-
-        // Initialize prop schema
-        componentInfo.inputSchema.properties[propName] = {
-          type: jsonSchemaType,
-          description: description,
-        };
+        componentInfo.inputSchema.properties[propName] = propSchema;
         if (!isOptional) {
           componentInfo.inputSchema.required.push(propName);
         }
 
-        // Process additional property tags
+        debugLog(`Final schema for ${propName}:`, propSchema);
+
+        // Process property tags
         for (const tag of propTags) {
           const tagConfig = propertyTags.get(tag.tagName.text);
           if (!tagConfig || tagConfig.to === 'name') continue;
@@ -384,36 +587,109 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           const value = (tag.comment || '').toString().trim();
           if (!value) continue;
 
-          // Handle special JSON Schema properties
           if (tagConfig.to === 'default') {
-            componentInfo.inputSchema[propName].properties[propName].default =
-              value;
+            componentInfo.inputSchema.properties[propName].default = value;
           } else if (tagConfig.to === 'enum') {
-            componentInfo.inputSchema[propName].properties[propName].enum =
-              value.split(',').map((v) => v.trim());
+            componentInfo.inputSchema.properties[propName].enum = value
+              .split(',')
+              .map((v) => v.trim());
           } else if (tagConfig.to === 'minimum' || tagConfig.to === 'maximum') {
-            componentInfo.inputSchema[propName].properties[propName][
-              tagConfig.to
-            ] = Number(value);
+            componentInfo.inputSchema.properties[propName][tagConfig.to] =
+              Number(value);
           } else if (tagConfig.to === 'pattern') {
-            componentInfo.inputSchema[propName].properties[propName].pattern =
-              value;
+            componentInfo.inputSchema.properties[propName].pattern = value;
           } else if (tagConfig.to === 'format') {
-            componentInfo.inputSchema[propName].properties[propName].format =
-              value;
+            componentInfo.inputSchema.properties[propName].format = value;
           } else {
-            componentInfo.inputSchema[propName].properties[propName][
-              tagConfig.to
-            ] = value;
+            componentInfo.inputSchema.properties[propName][tagConfig.to] =
+              value;
           }
+
+          debugLog(`Set property ${tagConfig.to} for ${propName}: ${value}`);
         }
       }
 
-      componentInfos.push(componentInfo);
-      ts.forEachChild(node, visitNode);
+      debugLog(
+        `Completed processing component: ${componentName}`,
+        componentInfo,
+      );
+      return componentInfo;
     }
 
-    visitNode(sourceFile);
+    // First pass: collect all interfaces
+    collectInterfaces(sourceFile);
+    debugLog(
+      'Collected all interfaces:',
+      Array.from(storedInterfaces.entries()).map(([key, value]) => ({
+        key,
+        componentName: value.componentName,
+        propPath: value.propPath,
+        interfaceName: value.interface.name?.getText(sourceFile),
+      })),
+    );
+
+    // Second pass: process all top-level component interfaces
+    const topLevelInterfaces = Array.from(storedInterfaces.values()).filter(
+      (stored) => !stored.propPath,
+    );
+    debugLog(
+      'Found top-level interfaces:',
+      topLevelInterfaces.map((s) => ({
+        componentName: s.componentName,
+        interfaceName: s.interface.name?.getText(sourceFile),
+      })),
+    );
+
+    // Handle default component name if there's only one component with no name
+    if (
+      topLevelInterfaces.length === 1 &&
+      !topLevelInterfaces[0].componentName
+    ) {
+      const defaultName = getComponentNameFromFile(filePath);
+      debugLog(`Using default component name: ${defaultName}`);
+      topLevelInterfaces[0].componentName = defaultName;
+      // Update the Map with the new component name
+      const oldKey = getInterfaceKey('', undefined);
+      const newKey = getInterfaceKey(defaultName, undefined);
+      const value = storedInterfaces.get(oldKey);
+      if (value) {
+        storedInterfaces.delete(oldKey);
+        storedInterfaces.set(newKey, { ...value, componentName: defaultName });
+      }
+    }
+
+    // Validate component names
+    const componentNames = new Set<string>();
+    for (const stored of topLevelInterfaces) {
+      if (!stored.componentName) {
+        throw new Error(
+          `@mcp-comp tag must have a value in file ${filePath}. ` +
+            `When multiple components are defined in one file, each component must have a unique name.`,
+        );
+      }
+      if (componentNames.has(stored.componentName)) {
+        throw new Error(
+          `Duplicate component name "${stored.componentName}" found in file ${filePath}. ` +
+            `Each component in a file must have a unique name.`,
+        );
+      }
+      componentNames.add(stored.componentName);
+    }
+
+    // Process each top-level component
+    for (const topLevelInterface of topLevelInterfaces) {
+      debugLog(
+        'Processing top level interface with component name',
+        topLevelInterface.componentName,
+      );
+      const componentInfo = processComponent(
+        topLevelInterface.interface,
+        topLevelInterface.componentName,
+      );
+      componentInfos.push(componentInfo);
+    }
+
+    debugLog('Final component infos:', componentInfos);
     return componentInfos;
   }
 
@@ -442,6 +718,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     for (const [key, value] of componentDataMap.entries()) {
       if (value.filePath === filePath) {
         componentDataMap.delete(key);
+        debugLog(`Removed component data for ${key} from ${filePath}`);
       }
     }
   }
@@ -452,6 +729,8 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     // Scan files at the start of the build
     async buildStart() {
       const files = await glob(include, { ignore: exclude });
+      debugLog('Starting build with files:', files);
+
       // Create program once
       tsProgram = ts.createProgram(files, {
         jsx: ts.JsxEmit.ReactJSX,
@@ -465,6 +744,8 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         try {
           const componentInfos = await parseFile(file, checker);
           if (componentInfos.length > 0) {
+            debugLog(`Found ${componentInfos.length} components in ${file}`);
+
             updateComponentData(componentInfos);
           }
         } catch (error) {
@@ -475,6 +756,10 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
       console.log(
         `MCP Synergy Comp Plugin: Found ${componentDataMap.size} components.`,
+      );
+      debugLog(
+        'Final component data map:',
+        Array.from(componentDataMap.entries()),
       );
 
       await sendMessage({
