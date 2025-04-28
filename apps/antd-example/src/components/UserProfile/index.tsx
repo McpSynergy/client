@@ -4,8 +4,8 @@ import {
   MailOutlined,
   PhoneOutlined,
   UserOutlined,
-} from '@ant-design/icons';
-import { Avatar, Button, Card, Col, List, Row, Tag } from 'antd';
+} from "@ant-design/icons";
+import { Avatar, Button, Card, Col, List, Row, Tag } from "antd";
 
 /**
  * @mcp-comp UserProfile
@@ -67,34 +67,34 @@ const UserProfile = ({
       following: 0,
     },
     skills: [],
-    avatar: '',
-    email: '',
-    phone: '',
-    name: '',
-    title: '',
-    company: '',
+    avatar: "",
+    email: "",
+    phone: "",
+    name: "",
+    title: "",
+    company: "",
   },
 }: UserProfileProps) => {
   // 用户统计数据展示
   const statsData = [
-    { title: 'Projects', value: user.stats.projects },
-    { title: 'Followers', value: user.stats.followers },
-    { title: 'Following', value: user.stats.following },
+    { title: "Projects", value: user.stats.projects },
+    { title: "Followers", value: user.stats.followers },
+    { title: "Following", value: user.stats.following },
   ];
 
   return (
     <Card
-      title='User Profile1'
+      title={`${user.name}'Profile`}
       actions={[
-        <Button key='edit' icon={<EditOutlined />} onClick={() => {}}>
+        <Button key="edit" icon={<EditOutlined />} onClick={() => {}}>
           Edit Profile
         </Button>,
       ]}
-      style={{ maxWidth: 800, margin: '20px auto' }}
+      style={{ maxWidth: 800, margin: "20px auto" }}
     >
       <Row gutter={24}>
         {/* 左侧 - 头像区域 */}
-        <Col xs={24} sm={8} style={{ textAlign: 'center' }}>
+        <Col xs={24} sm={8} style={{ textAlign: "center" }}>
           <Avatar
             size={128}
             src={user.avatar}
@@ -102,11 +102,11 @@ const UserProfile = ({
             style={{ marginBottom: 16 }}
           />
           <h3>{user.name}</h3>
-          <p style={{ color: '#666' }}>{user.title}</p>
+          <p style={{ color: "#666" }}>{user.title}</p>
 
           <Button
-            type='primary'
-            shape='round'
+            type="primary"
+            shape="round"
             icon={<MailOutlined />}
             style={{ marginTop: 16 }}
             onClick={() => {}}
@@ -118,7 +118,7 @@ const UserProfile = ({
         {/* 右侧 - 详细信息 */}
         <Col xs={24} sm={16}>
           <List
-            itemLayout='horizontal'
+            itemLayout="horizontal"
             dataSource={statsData}
             renderItem={(item) => (
               <List.Item>
@@ -136,11 +136,11 @@ const UserProfile = ({
             </p>
             <p>
               <PhoneOutlined style={{ marginRight: 8 }} />
-              {user.phone || 'Not provided'}
+              {user.phone || "Not provided"}
             </p>
             <p>
               <EnvironmentOutlined style={{ marginRight: 8 }} />
-              {user.company || 'Not provided'}
+              {user.company || "Not provided"}
             </p>
           </div>
 
@@ -149,7 +149,7 @@ const UserProfile = ({
             {user.skills.map((skill, index) => (
               <Tag
                 key={index}
-                color={skill.color || 'blue'}
+                color={skill.color || "blue"}
                 style={{ marginBottom: 8 }}
               >
                 {skill.name}
@@ -165,23 +165,23 @@ const UserProfile = ({
 // 默认 props 配置
 UserProfile.defaultProps = {
   user: {
-    name: 'John Doe',
-    title: 'Senior Developer',
-    avatar: 'https://example.com/avatar.jpg',
-    email: 'john.doe@example.com',
-    phone: '+1 234 567 890',
+    name: "John Doe",
+    title: "Senior Developer",
+    avatar: "https://example.com/avatar.jpg",
+    email: "john.doe@example.com",
+    phone: "+1 234 567 890",
     skills: [
-      { name: 'JavaScript', color: 'gold' },
-      { name: 'React', color: 'cyan' },
-      { name: 'Node.js', color: 'green' },
+      { name: "JavaScript", color: "gold" },
+      { name: "React", color: "cyan" },
+      { name: "Node.js", color: "green" },
     ],
     stats: {
       projects: 24,
       followers: 1489,
       following: 583,
     },
-    onEdit: () => console.log('Edit clicked'),
-    onContact: () => console.log('Contact clicked'),
+    onEdit: () => console.log("Edit clicked"),
+    onContact: () => console.log("Contact clicked"),
   },
 };
 

@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [
     react(),
     MCPComp({
-      hotUpdateEndpoint: 'http://localhost:3000/update-mcp-comps',
+      hotUpdateEndpoint: 'http://localhost:3000',
     }),
   ],
   server: {
