@@ -17,8 +17,8 @@ export interface MCPCompOptions {
   propertyTags?: Map<string, CommentPropertyTag>;
   /** Whether to use lazy imports */
   lazyImport?: boolean;
-  /** Endpoint to notify when hot updates occur */
-  hotUpdateEndpoint?: string;
+  /** Path to output the component properties schema */
+  componentPropSchemaOutputPath?: string;
   /** Whether to enable debug mode */
   debug?: boolean;
 }
@@ -26,7 +26,7 @@ export interface MCPCompOptions {
 export interface MCPCompData {
   name: string;
   filePath: string;
-  inputSchema: Record<string, any>;
+  propertySchema: Record<string, any>;
   [key: string]: any; // Allow additional properties
 }
 
@@ -244,7 +244,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     componentTags = MCPCompTags,
     propertyTags = MCPPropTags,
     lazyImport = true,
-    hotUpdateEndpoint,
+    componentPropSchemaOutputPath = 'mcp-comp-schema.json',
     debug = false,
   } = options;
 
@@ -273,26 +273,18 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     return 'object';
   }
 
-  // Helper to send messages to the endpoint
-  async function sendMessage(data: any) {
-    if (!hotUpdateEndpoint) return;
+  // Helper to save schema output to a file
+  async function saveSchemaOuputJson(data: any) {
+    if (!componentPropSchemaOutputPath) return;
 
     try {
-      const response = await fetch(hotUpdateEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        console.error(`Failed to send message: ${response.statusText}`);
-      } else {
-        console.log('sent message to ', hotUpdateEndpoint);
-      }
+      await fs.writeFile(
+        componentPropSchemaOutputPath,
+        JSON.stringify(data, null, 2),
+      );
+      console.log('Schema output saved to:', componentPropSchemaOutputPath);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error saving schema output:', error);
     }
   }
 
@@ -509,7 +501,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       const componentInfo: MCPCompData = {
         name: componentName,
         filePath: filePath,
-        inputSchema: {
+        propertySchema: {
           type: 'object',
           properties: {},
           required: [],
@@ -543,9 +535,8 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         const mcpPropTag = propTags.find(
           (tag) => tag.tagName.text === 'mcp-prop',
         );
-        if (!mcpPropTag) continue;
 
-        const description = (mcpPropTag.comment || '').toString().trim();
+        const description = (mcpPropTag?.comment || '').toString().trim();
         const isOptional = !!member.questionToken;
 
         debugLog(`Processing property: ${propName}`, {
@@ -572,9 +563,9 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           };
         }
 
-        componentInfo.inputSchema.properties[propName] = propSchema;
+        componentInfo.propertySchema.properties[propName] = propSchema;
         if (!isOptional) {
-          componentInfo.inputSchema.required.push(propName);
+          componentInfo.propertySchema.required.push(propName);
         }
 
         debugLog(`Final schema for ${propName}:`, propSchema);
@@ -588,20 +579,20 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           if (!value) continue;
 
           if (tagConfig.to === 'default') {
-            componentInfo.inputSchema.properties[propName].default = value;
+            componentInfo.propertySchema.properties[propName].default = value;
           } else if (tagConfig.to === 'enum') {
-            componentInfo.inputSchema.properties[propName].enum = value
+            componentInfo.propertySchema.properties[propName].enum = value
               .split(',')
               .map((v) => v.trim());
           } else if (tagConfig.to === 'minimum' || tagConfig.to === 'maximum') {
-            componentInfo.inputSchema.properties[propName][tagConfig.to] =
+            componentInfo.propertySchema.properties[propName][tagConfig.to] =
               Number(value);
           } else if (tagConfig.to === 'pattern') {
-            componentInfo.inputSchema.properties[propName].pattern = value;
+            componentInfo.propertySchema.properties[propName].pattern = value;
           } else if (tagConfig.to === 'format') {
-            componentInfo.inputSchema.properties[propName].format = value;
+            componentInfo.propertySchema.properties[propName].format = value;
           } else {
-            componentInfo.inputSchema.properties[propName][tagConfig.to] =
+            componentInfo.propertySchema.properties[propName][tagConfig.to] =
               value;
           }
 
@@ -762,13 +753,11 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         Array.from(componentDataMap.entries()),
       );
 
-      await sendMessage({
-        type: 'build-start',
-        data: Array.from(componentDataMap.values()).map(
+      await saveSchemaOuputJson(
+        Array.from(componentDataMap.values()).map(
           ({ filePath, ...rest }) => rest,
         ),
-        timestamp: Date.now(),
-      });
+      );
     },
 
     resolveId(id) {
@@ -909,12 +898,9 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           });
 
           // Send hot update message
-          await sendMessage({
-            type: 'hot-update',
-            file,
-            data: componentInfos.length > 0 ? componentInfos : null,
-            timestamp: Date.now(),
-          });
+          await saveSchemaOuputJson(
+            componentInfos.length > 0 ? componentInfos : null,
+          );
 
           const modules = [dataModule, importsModule].filter(
             (m): m is ModuleNode => m !== undefined,
@@ -926,13 +912,11 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
     // Handle build completion
     async buildEnd() {
-      await sendMessage({
-        type: 'build-complete',
-        data: Array.from(componentDataMap.values()).map(
+      await saveSchemaOuputJson(
+        Array.from(componentDataMap.values()).map(
           ({ filePath, ...rest }) => rest,
         ),
-        timestamp: Date.now(),
-      });
+      );
     },
   };
 }

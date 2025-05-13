@@ -127,7 +127,7 @@ const Chat = () => {
             if (meta) {
               console.log("meta", meta);
 
-              const props = JSON.parse(meta?.componentProps);
+              const props = meta?.componentProps;
 
               return (
                 <>

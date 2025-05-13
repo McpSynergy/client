@@ -31,21 +31,13 @@ interface Stats {
  * @mcp-prop-path user
  */
 export interface User {
-  /** @mcp-prop */
   name: string;
-  /** @mcp-prop */
   title: string;
-  /** @mcp-prop */
   avatar: string;
-  /** @mcp-prop */
   email: string;
-  /** @mcp-prop */
   phone?: string;
-  /** @mcp-prop */
   skills: Skill[];
-  /** @mcp-prop */
   stats: Stats;
-  /** @mcp-prop */
   company: string;
 }
 
@@ -55,7 +47,6 @@ export interface User {
  * @mcp-server-name mcp-component-render
  */
 export interface UserProfileProps {
-  /** @mcp-prop User */
   user: User;
 }
 

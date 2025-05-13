@@ -1,0 +1,84 @@
+[
+  {
+    "name": "UserProfile",
+    "propertySchema": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "avatar": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            },
+            "stats": {
+              "type": "object",
+              "properties": {
+                "projects": {
+                  "type": "number"
+                },
+                "followers": {
+                  "type": "number"
+                },
+                "following": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "projects",
+                "followers",
+                "following"
+              ]
+            },
+            "company": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "title",
+            "avatar",
+            "email",
+            "skills",
+            "stats",
+            "company"
+          ],
+          "description": ""
+        }
+      },
+      "required": [
+        "user"
+      ]
+    },
+    "description": "Show user profile",
+    "serverName": "mcp-component-render"
+  }
+]
