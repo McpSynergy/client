@@ -1,59 +1,5 @@
 [
   {
-    "name": "Cart",
-    "filePath": "/Users/yangjie/WebCode/npm库/mcps/client/apps/antd-example/src/components/Cart/index.tsx",
-    "propertySchema": {
-      "type": "object",
-      "properties": {
-        "books": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              },
-              "author": {
-                "type": "string"
-              },
-              "cover": {
-                "type": "string"
-              },
-              "price": {
-                "type": "number"
-              },
-              "count": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "id",
-              "title",
-              "author",
-              "cover",
-              "price",
-              "count"
-            ]
-          }
-        },
-        "handleGoBack": {
-          "type": "object"
-        },
-        "onRemove": {
-          "type": "object"
-        }
-      },
-      "required": [
-        "books"
-      ]
-    },
-    "description": "Display shopping cart information",
-    "serverName": "mcp-component-render"
-  },
-  {
     "name": "UserProfile",
     "filePath": "/Users/yangjie/WebCode/npm库/mcps/client/apps/antd-example/src/components/UserProfile/index.tsx",
     "propertySchema": {

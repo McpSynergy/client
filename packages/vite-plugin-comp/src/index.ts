@@ -793,6 +793,11 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       const files = await glob(include, { ignore: exclude });
       debugLog('Starting build with files:', files);
 
+      // 获取所有已存在的组件文件路径
+      const existingComponentFiles = new Set(
+        Array.from(componentDataMap.values()).map(data => data.filePath)
+      );
+
       // Create program once
       tsProgram = ts.createProgram(files, {
         jsx: ts.JsxEmit.ReactJSX,
@@ -804,6 +809,23 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
       for (const file of files) {
         try {
+          // 检查文件是否包含 @mcp-comp 标识
+          const fileContent = await fs.readFile(file, 'utf-8');
+          const hasMcpCompTag = fileContent.includes('@mcp-comp');
+
+          // 如果文件之前存在组件数据，但现在没有 @mcp-comp 标识，则视为删除
+          if (existingComponentFiles.has(file) && !hasMcpCompTag) {
+            console.log(`MCP Synergy Comp Plugin: File ${file} no longer contains @mcp-comp tag, removing components...`);
+            removeComponentData(file);
+            continue;
+          }
+
+          // 如果文件不包含 @mcp-comp 标识，跳过处理
+          if (!hasMcpCompTag) {
+            debugLog(`File ${file} does not contain @mcp-comp tag, skipping...`);
+            continue;
+          }
+
           const componentInfos = await parseFile(file, checker);
           if (componentInfos.length > 0) {
             debugLog(`Found ${componentInfos.length} components in ${file}:`, componentInfos);
@@ -941,6 +963,60 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       if (isIncluded && file.endsWith('.tsx')) {
         // 预检查文件是否包含 @mcp-comp 标识
         const fileContent = await fs.readFile(file, 'utf-8');
+        const existingData = Array.from(componentDataMap.values()).filter(
+          (item) => item.filePath === file,
+        );
+
+        // 如果文件之前存在组件数据，但现在没有 @mcp-comp 标识，则视为删除
+        if (existingData.length > 0 && !fileContent.includes('@mcp-comp')) {
+          console.log(`MCP Synergy Comp Plugin: File ${file} no longer contains @mcp-comp tag, removing components...`);
+          removeComponentData(file);
+
+          // Invalidate both virtual modules
+          const dataModule = server.moduleGraph.getModuleById(
+            '\0virtual:mcp-comp/data.json',
+          );
+          const importsModule = server.moduleGraph.getModuleById(
+            '\0virtual:mcp-comp/imports',
+          );
+
+          if (dataModule) server.moduleGraph.invalidateModule(dataModule);
+          if (importsModule) server.moduleGraph.invalidateModule(importsModule);
+
+          // Notify client
+          server.ws.send({
+            type: 'update',
+            updates: [
+              {
+                type: 'js-update',
+                path: dataModule?.url || '',
+                acceptedPath: dataModule?.url || '',
+                timestamp: Date.now(),
+              },
+              {
+                type: 'js-update',
+                path: importsModule?.url || '',
+                acceptedPath: importsModule?.url || '',
+                timestamp: Date.now(),
+              },
+            ],
+          });
+
+          await saveSchemaOuputJson();
+
+          if (options.pushConfig) {
+            await configService.pushConfig(
+              Array.from(componentDataMap.values()),
+              options.pushConfig
+            );
+          }
+
+          const modules = [dataModule, importsModule].filter(
+            (m): m is ModuleNode => m !== undefined,
+          );
+          return modules;
+        }
+
         if (!fileContent.includes('@mcp-comp')) {
           console.log(`MCP Synergy Comp Plugin: File ${file} does not contain @mcp-comp tag, skipping...`);
           return;
@@ -959,9 +1035,6 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         const componentInfos = await parseFile(file, checker);
 
         let changed = false;
-        const existingData = Array.from(componentDataMap.values()).filter(
-          (item) => item.filePath === file,
-        );
 
         if (componentInfos.length > 0) {
           if (JSON.stringify(existingData) !== JSON.stringify(componentInfos)) {
