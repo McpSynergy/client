@@ -297,7 +297,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
     try {
       const data = Array.from(componentDataMap.values()).map(
-        ({ filePath, ...rest }) => rest,
+        (rest) => rest,
       );
       await fs.writeFile(
         componentPropSchemaOutputPath,
@@ -806,7 +806,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         try {
           const componentInfos = await parseFile(file, checker);
           if (componentInfos.length > 0) {
-            debugLog(`Found ${componentInfos.length} components in ${file}`);
+            debugLog(`Found ${componentInfos.length} components in ${file}:`, componentInfos);
             updateComponentData(componentInfos);
           }
         } catch (error) {
@@ -834,6 +834,8 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     },
 
     resolveId(id) {
+      console.log('Resolving ID:', id);
+
       if (
         id === 'virtual:mcp-comp/data.json' ||
         id === 'virtual:mcp-comp/imports'
@@ -844,46 +846,80 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     },
 
     load(id) {
+      debugLog('Loading module:', id);
       if (id === '\0virtual:mcp-comp/data.json') {
         const data = Array.from(componentDataMap.values()).map(
           ({ filePath, ...rest }) => rest,
         );
+        debugLog('Generated data.json content:', data);
         return JSON.stringify(data, null, 2);
       }
 
       if (id === '\0virtual:mcp-comp/imports') {
+        debugLog('Generating imports for components:', Array.from(componentDataMap.entries()));
+
+        if (componentDataMap.size === 0) {
+          console.warn('No components found in componentDataMap');
+          return 'export default {};';
+        }
+
         if (!lazyImport) {
           // Generate direct imports
           const imports = Array.from(componentDataMap.values())
             .map((comp) => {
+              if (!comp.name) {
+                console.warn(`Component in ${comp.filePath} has no name, skipping...`);
+                return '';
+              }
               const virtualModuleDir = path.dirname(id);
               const relativePath = path.relative(
                 virtualModuleDir,
                 comp.filePath,
               );
-              return `import ${comp.name} from '${relativePath}';`;
+              const importStatement = `import ${comp.name} from '${relativePath}';`;
+              debugLog('Generated import statement:', importStatement);
+              return importStatement;
             })
+            .filter(Boolean)
             .join('\n');
-          const exports = `export { ${Array.from(componentDataMap.keys()).join(
-            ', ',
-          )} };`;
-          return `${imports}\n${exports}`;
+
+          const componentNames = Array.from(componentDataMap.keys())
+            .filter(key => key.split(':')[0])
+            .join(', ');
+          const exports = `export { ${componentNames} };`;
+
+          const finalContent = `${imports}\n${exports}`;
+          debugLog('Generated imports content:', finalContent);
+          return finalContent;
         } else {
           // Generate lazy imports
           const lazyImports = Array.from(componentDataMap.values())
             .map((comp) => {
+              if (!comp.name) {
+                console.warn(`Component in ${comp.filePath} has no name, skipping...`);
+                return '';
+              }
               const virtualModuleDir = path.dirname(id);
               const relativePath = path.relative(
                 virtualModuleDir,
                 comp.filePath,
               );
-              return `const ${comp.name} = () => import('${relativePath}');`;
+              const lazyImportStatement = `const ${comp.name} = () => import('${relativePath}');`;
+              debugLog('Generated lazy import statement:', lazyImportStatement);
+              return lazyImportStatement;
             })
+            .filter(Boolean)
             .join('\n');
-          const exports = `export default { ${Array.from(
-            componentDataMap.keys(),
-          ).join(', ')} };`;
-          return `${lazyImports}\n${exports}`;
+
+          const componentNames = Array.from(componentDataMap.keys())
+            .filter(key => key.split(':')[0])
+            .map(key => key.split(':')[0])
+            .join(', ');
+          const exports = `export default { ${componentNames} };`;
+
+          const finalContent = `${lazyImports}\n${exports}`;
+          debugLog('Generated lazy imports content:', finalContent);
+          return finalContent;
         }
       }
 

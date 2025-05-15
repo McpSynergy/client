@@ -23,7 +23,7 @@ export interface Book {
  * @mcp-server-name mcp-component-render
  */
 export interface BooksCartProps {
-  books?: Book[];
+  books: Book[];
   handleGoBack?: () => void;
   onRemove?: (id: string) => void;
 }
