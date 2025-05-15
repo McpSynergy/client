@@ -3,6 +3,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import ts from 'typescript';
 import type { ModuleNode, Plugin } from 'vite';
+import { ConfigPushService } from './server';
 
 const { glob } = fastGlob;
 
@@ -21,6 +22,15 @@ export interface MCPCompOptions {
   componentPropSchemaOutputPath?: string;
   /** Whether to enable debug mode */
   debug?: boolean;
+
+  /** Whether to push config to server */
+  pushConfig?: {
+    serverUrl: string;
+    projectId: string;
+    env?: string;
+    headers?: Record<string, string>;
+    [key: string]: any;
+  };
 }
 
 export interface MCPCompData {
@@ -248,7 +258,10 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     debug = false,
   } = options;
 
-  let componentDataMap: Map<string, MCPCompData> = new Map();
+  const configService = ConfigPushService.getInstance();
+
+  // 使用 Map 存储组件数据，键为组件名和服务器名的组合
+  let componentDataMap = new Map<string, MCPCompData>();
   let tsProgram: ts.Program | null = null;
 
   // Helper to log debug information
@@ -273,11 +286,19 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     return 'object';
   }
 
+  // Helper to get component unique key
+  function getComponentKey(name: string, serverName?: string): string {
+    return `${name}:${serverName || ''}`;
+  }
+
   // Helper to save schema output to a file
-  async function saveSchemaOuputJson(data: any) {
+  async function saveSchemaOuputJson() {
     if (!componentPropSchemaOutputPath) return;
 
     try {
+      const data = Array.from(componentDataMap.values()).map(
+        ({ filePath, ...rest }) => rest,
+      );
       await fs.writeFile(
         componentPropSchemaOutputPath,
         JSON.stringify(data, null, 2),
@@ -291,21 +312,6 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
   // Helper to get base filename without extension
   function getComponentNameFromFile(filePath: string) {
     return path.basename(filePath, path.extname(filePath));
-  }
-
-  // New data structure to store interfaces by their mcp-comp and mcp-prop-path
-  interface StoredInterface {
-    interface: ts.InterfaceDeclaration;
-    componentName: string;
-    propPath?: string;
-    filePath: string;
-  }
-  // Use Map for better lookup performance
-  const storedInterfaces = new Map<string, StoredInterface>();
-
-  // Helper to get the key for the Map
-  function getInterfaceKey(componentName: string, propPath?: string): string {
-    return propPath ? `${componentName}:${propPath}` : componentName;
   }
 
   // Helper to process a type node recursively
@@ -434,6 +440,19 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     };
   }
 
+  // New data structure to store interfaces by their mcp-comp and mcp-prop-path
+  interface StoredInterface {
+    interface: ts.InterfaceDeclaration;
+    componentName: string;
+    propPath?: string;
+    filePath: string;
+  }
+
+  // Helper to get the key for the Map
+  function getInterfaceKey(componentName: string, propPath?: string): string {
+    return propPath ? `${componentName}:${propPath}` : componentName;
+  }
+
   // Helper to parse a single file and extract MCP data
   async function parseFile(
     filePath: string,
@@ -442,6 +461,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     debugLog('--------------------------------');
     debugLog('Parsing file: ' + filePath);
     debugLog('--------------------------------');
+
     const fileContent = await fs.readFile(filePath, 'utf-8');
     const sourceFile = ts.createSourceFile(
       filePath,
@@ -449,7 +469,15 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       ts.ScriptTarget.Latest,
       true,
     );
+
+    // 检查文件是否包含 @mcp-comp 标识
+    if (!fileContent.includes('@mcp-comp')) {
+      debugLog('File does not contain @mcp-comp tag, skipping...');
+      return [];
+    }
+
     const componentInfos: MCPCompData[] = [];
+    const storedInterfaces = new Map<string, StoredInterface>();
 
     // First pass: collect all interfaces
     function collectInterfaces(node: ts.Node) {
@@ -470,16 +498,14 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           ? (mcpPropPathTag.comment || '').toString().trim()
           : undefined;
 
-        // 获取组件的实际文件路径
         const nodeSourceFile = node.getSourceFile();
         const actualFilePath = path.resolve(nodeSourceFile.fileName);
 
         debugLog(
-          `Found interface with mcp-comp: ${componentName}${propPath ? ` and mcp-prop-path: ${propPath}` : ''
-          }`,
+          `Found interface with mcp-comp: ${componentName}${propPath ? ` and mcp-prop-path: ${propPath}` : ''}`,
           {
             interfaceName: node.name?.getText(sourceFile),
-            actualFilePath
+            actualFilePath,
           },
         );
 
@@ -506,7 +532,6 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         `Processing component interface: ${node.name?.getText(sourceFile)}`,
       );
 
-      // 获取组件的实际文件路径
       const nodeSourceFile = node.getSourceFile();
       const actualFilePath = path.resolve(nodeSourceFile.fileName);
 
@@ -559,19 +584,34 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           description,
           type: member.type?.getText(sourceFile),
           isOptional,
+          memberText: member.getText(sourceFile),
         });
 
         let propSchema: SchemaProperty;
 
         if (member.type) {
-          propSchema = processTypeNode(
-            member.type,
-            componentName,
-            sourceFile,
-            storedInterfaces,
-            propName,
-          );
-          propSchema.description = description;
+          const typeText = member.type.getText(sourceFile).replace(/\?/g, '');
+          const typeNode = ts.createSourceFile(
+            'temp.ts',
+            `type T = ${typeText}`,
+            ts.ScriptTarget.Latest,
+            true,
+          ).statements[0];
+
+          if (ts.isTypeAliasDeclaration(typeNode) && typeNode.type) {
+            propSchema = processTypeNode(
+              typeNode.type,
+              componentName,
+              sourceFile,
+              storedInterfaces,
+              propName,
+            );
+          } else {
+            propSchema = {
+              type: mapTypeToJsonSchema(typeText),
+              description,
+            };
+          }
         } else {
           propSchema = {
             type: 'any',
@@ -579,9 +619,13 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           };
         }
 
-        componentInfo.propertySchema.properties[propName] = propSchema;
-        if (!isOptional) {
-          componentInfo.propertySchema.required.push(propName);
+        if (propName && propName.trim()) {
+          componentInfo.propertySchema.properties[propName] = propSchema;
+          if (!isOptional) {
+            componentInfo.propertySchema.required.push(propName);
+          }
+        } else {
+          console.warn(`Invalid property name found in ${filePath}, skipping...`);
         }
 
         debugLog(`Final schema for ${propName}:`, propSchema);
@@ -647,6 +691,11 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       })),
     );
 
+    if (topLevelInterfaces.length === 0) {
+      debugLog('No interfaces with @mcp-comp tag found, returning empty array');
+      return [];
+    }
+
     // Handle default component name if there's only one component with no name
     if (
       topLevelInterfaces.length === 1 &&
@@ -655,7 +704,6 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       const defaultName = getComponentNameFromFile(filePath);
       debugLog(`Using default component name: ${defaultName}`);
       topLevelInterfaces[0].componentName = defaultName;
-      // Update the Map with the new component name
       const oldKey = getInterfaceKey('', undefined);
       const newKey = getInterfaceKey(defaultName, undefined);
       const value = storedInterfaces.get(oldKey);
@@ -719,12 +767,14 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         console.warn(`Component in ${data.filePath} has no name, skipping...`);
         continue;
       }
-      componentDataMap.set(data.name, data);
+
+      const uniqueKey = getComponentKey(data.name, data.serverName);
+      componentDataMap.set(uniqueKey, data);
       debugLog(`Updated component data for ${data.name} from ${data.filePath}`);
     }
   }
 
-  // Helper to remove data for a file (e.g., if @mcp-comp removed)
+  // Helper to remove data for a file
   function removeComponentData(filePath: string) {
     if (!componentDataMap) return;
     for (const [key, value] of componentDataMap.entries()) {
@@ -757,7 +807,6 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           const componentInfos = await parseFile(file, checker);
           if (componentInfos.length > 0) {
             debugLog(`Found ${componentInfos.length} components in ${file}`);
-
             updateComponentData(componentInfos);
           }
         } catch (error) {
@@ -774,11 +823,14 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         Array.from(componentDataMap.entries()),
       );
 
-      await saveSchemaOuputJson(
-        Array.from(componentDataMap.values()).map(
-          ({ ...rest }) => rest,
-        ),
-      );
+      await saveSchemaOuputJson();
+
+      if (options.pushConfig) {
+        await configService.pushConfig(
+          Array.from(componentDataMap.values()),
+          options.pushConfig
+        );
+      }
     },
 
     resolveId(id) {
@@ -793,11 +845,10 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
     load(id) {
       if (id === '\0virtual:mcp-comp/data.json') {
-        // Filter out filePath before stringifying for the client
-        const exportList = Array.from(componentDataMap.values()).map(
+        const data = Array.from(componentDataMap.values()).map(
           ({ filePath, ...rest }) => rest,
         );
-        return JSON.stringify(exportList, null, 2);
+        return JSON.stringify(data, null, 2);
       }
 
       if (id === '\0virtual:mcp-comp/imports') {
@@ -805,9 +856,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           // Generate direct imports
           const imports = Array.from(componentDataMap.values())
             .map((comp) => {
-              // Get the directory of the virtual module
               const virtualModuleDir = path.dirname(id);
-              // Get the relative path from the virtual module to the component
               const relativePath = path.relative(
                 virtualModuleDir,
                 comp.filePath,
@@ -823,9 +872,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           // Generate lazy imports
           const lazyImports = Array.from(componentDataMap.values())
             .map((comp) => {
-              // Get the directory of the virtual module
               const virtualModuleDir = path.dirname(id);
-              // Get the relative path from the virtual module to the component
               const relativePath = path.relative(
                 virtualModuleDir,
                 comp.filePath,
@@ -856,6 +903,13 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       );
 
       if (isIncluded && file.endsWith('.tsx')) {
+        // 预检查文件是否包含 @mcp-comp 标识
+        const fileContent = await fs.readFile(file, 'utf-8');
+        if (!fileContent.includes('@mcp-comp')) {
+          console.log(`MCP Synergy Comp Plugin: File ${file} does not contain @mcp-comp tag, skipping...`);
+          return;
+        }
+
         console.log(`MCP Synergy Comp Plugin: HMR update detected for ${file}`);
         if (!tsProgram) {
           const files = await glob(include, { ignore: exclude });
@@ -899,29 +953,35 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           if (dataModule) server.moduleGraph.invalidateModule(dataModule);
           if (importsModule) server.moduleGraph.invalidateModule(importsModule);
 
-          // Notify client
-          server.ws.send({
-            type: 'update',
-            updates: [
-              {
-                type: 'js-update',
-                path: dataModule?.url || '',
-                acceptedPath: dataModule?.url || '',
-                timestamp: Date.now(),
-              },
-              {
-                type: 'js-update',
-                path: importsModule?.url || '',
-                acceptedPath: importsModule?.url || '',
-                timestamp: Date.now(),
-              },
-            ],
-          });
+          if (componentInfos.length > 0) {
+            // Notify client
+            server.ws.send({
+              type: 'update',
+              updates: [
+                {
+                  type: 'js-update',
+                  path: dataModule?.url || '',
+                  acceptedPath: dataModule?.url || '',
+                  timestamp: Date.now(),
+                },
+                {
+                  type: 'js-update',
+                  path: importsModule?.url || '',
+                  acceptedPath: importsModule?.url || '',
+                  timestamp: Date.now(),
+                },
+              ],
+            });
 
-          // Send hot update message
-          await saveSchemaOuputJson(
-            componentInfos.length > 0 ? componentInfos : null,
-          );
+            await saveSchemaOuputJson();
+
+            if (options.pushConfig) {
+              await configService.pushConfig(
+                Array.from(componentDataMap.values()),
+                options.pushConfig
+              );
+            }
+          }
 
           const modules = [dataModule, importsModule].filter(
             (m): m is ModuleNode => m !== undefined,
@@ -933,11 +993,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
     // Handle build completion
     async buildEnd() {
-      await saveSchemaOuputJson(
-        Array.from(componentDataMap.values()).map(
-          ({ filePath, ...rest }) => rest,
-        ),
-      );
+      await saveSchemaOuputJson();
     },
   };
 }
