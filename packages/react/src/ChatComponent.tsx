@@ -1,9 +1,17 @@
-import React, { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState, createContext, useContext } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 // @ts-ignore
 import MCPComponentImports from "virtual:mcp-comp/imports";
 // @ts-ignore
 import MCPComponentData from "virtual:mcp-comp/data.json";
+
+export const MCPComponentContext = createContext<{
+  isMCPComponent: boolean;
+}>({
+  isMCPComponent: false,
+});
+
+export const useMCPComponent = () => useContext(MCPComponentContext);
 
 interface PropertySchema {
   required?: boolean;
@@ -25,6 +33,7 @@ interface ChatComponentProps {
 }
 
 const validateComponent = (name: string, props: Record<string, any>) => {
+  
   const componentData = (MCPComponentData as ComponentSchema[]).find(
     (comp) => comp.name === name,
   );
@@ -54,6 +63,8 @@ export const ChatComponent = ({
   fallback = <div>Validating component...</div>,
   errorFallback = <div>Failed to validate component</div>,
 }: ChatComponentProps) => {
+  
+
   const DynamicComponent = useState(() =>
     lazy(() => MCPComponentImports[name]()),
   )[0];
@@ -63,12 +74,18 @@ export const ChatComponent = ({
   useEffect(() => {
     setIsValidating(true);
     setValidationError(null);
+    if (!name) {
+      setIsValidating(true);
+      return;
+    }
     try {
       validateComponent(name, props);
     } catch (error) {
       setValidationError(
         error instanceof Error ? error.message : "Failed to validate component",
       );
+      // 展示错误信息
+      console.error(error);
     } finally {
       setIsValidating(false);
     }
@@ -85,7 +102,11 @@ export const ChatComponent = ({
   return (
     <ErrorBoundary fallback={errorFallback}>
       <Suspense fallback={fallback}>
-        <DynamicComponent name={name} props={props} />
+        <MCPComponentContext.Provider value={{
+          isMCPComponent: true,
+        }}>
+          <DynamicComponent _mcp_comp_name={name} {...props} />
+        </MCPComponentContext.Provider>
       </Suspense>
     </ErrorBoundary>
   );

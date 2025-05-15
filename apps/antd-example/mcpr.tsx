@@ -6,14 +6,11 @@ export const listMcpr = [
     serverName: "mcp-component-render",
     description: "Show user profile",
     component: React.lazy(() => import("./src/components/UserProfile")),
-    inputSchema: {
-      type: "object",
-      properties: {
-        userName: {
-          type: "string",
-          description: "User name",
-        },
-      },
-    },
+  },
+  {
+    name: "book-card",
+    serverName: "mcp-component-render",
+    description: "Show book card",
+    component: React.lazy(() => import("./src/components/Books/BookCard")),
   },
 ];

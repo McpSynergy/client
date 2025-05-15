@@ -1,84 +1,75 @@
 [
   {
     "name": "UserProfile",
+    "filePath": "/Users/yangjie/WebCode/npm库/mcps/client/apps/antd-example/src/components/UserProfile/index.tsx",
     "propertySchema": {
       "type": "object",
       "properties": {
-        "user": {
+        "e.getIt": {
           "type": "object",
-          "properties": {
-            "name": {
-              "type": "string"
-            },
-            "title": {
-              "type": "string"
-            },
-            "avatar": {
-              "type": "string"
-            },
-            "email": {
-              "type": "string"
-            },
-            "phone": {
-              "type": "string"
-            },
-            "skills": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "color": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name"
-                ]
-              }
-            },
-            "stats": {
-              "type": "object",
-              "properties": {
-                "projects": {
-                  "type": "number"
-                },
-                "followers": {
-                  "type": "number"
-                },
-                "following": {
-                  "type": "number"
-                }
-              },
-              "required": [
-                "projects",
-                "followers",
-                "following"
-              ]
-            },
-            "company": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "name",
-            "title",
-            "avatar",
-            "email",
-            "skills",
-            "stats",
-            "company"
-          ],
           "description": ""
         }
       },
       "required": [
-        "user"
+        "e.getIt"
       ]
     },
     "description": "Show user profile",
+    "serverName": "mcp-component-render"
+  },
+  {
+    "name": "Cart",
+    "filePath": "/Users/yangjie/WebCode/npm库/mcps/client/apps/antd-example/src/components/Cart/index.tsx",
+    "propertySchema": {
+      "type": "object",
+      "properties": {
+        "books": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "author": {
+                "type": "string"
+              },
+              "cover": {
+                "type": "string"
+              },
+              "price": {
+                "type": "number"
+              },
+              "count": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "author",
+              "cover",
+              "price",
+              "count"
+            ]
+          },
+          "description": ""
+        },
+        "handleGoBack": {
+          "type": "function",
+          "description": ""
+        },
+        "onRemove": {
+          "type": "function",
+          "description": ""
+        }
+      },
+      "required": []
+    },
+    "description": "Display shopping cart information",
     "serverName": "mcp-component-render"
   }
 ]

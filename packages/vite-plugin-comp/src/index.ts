@@ -298,6 +298,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     interface: ts.InterfaceDeclaration;
     componentName: string;
     propPath?: string;
+    filePath: string;
   }
   // Use Map for better lookup performance
   const storedInterfaces = new Map<string, StoredInterface>();
@@ -469,11 +470,17 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           ? (mcpPropPathTag.comment || '').toString().trim()
           : undefined;
 
+        // 获取组件的实际文件路径
+        const nodeSourceFile = node.getSourceFile();
+        const actualFilePath = path.resolve(nodeSourceFile.fileName);
+
         debugLog(
-          `Found interface with mcp-comp: ${componentName}${
-            propPath ? ` and mcp-prop-path: ${propPath}` : ''
+          `Found interface with mcp-comp: ${componentName}${propPath ? ` and mcp-prop-path: ${propPath}` : ''
           }`,
-          { interfaceName: node.name?.getText(sourceFile) },
+          {
+            interfaceName: node.name?.getText(sourceFile),
+            actualFilePath
+          },
         );
 
         const key = getInterfaceKey(componentName, propPath);
@@ -481,6 +488,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           interface: node,
           componentName,
           propPath,
+          filePath: actualFilePath,
         });
       }
     }
@@ -498,9 +506,13 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         `Processing component interface: ${node.name?.getText(sourceFile)}`,
       );
 
+      // 获取组件的实际文件路径
+      const nodeSourceFile = node.getSourceFile();
+      const actualFilePath = path.resolve(nodeSourceFile.fileName);
+
       const componentInfo: MCPCompData = {
         name: componentName,
-        filePath: filePath,
+        filePath: actualFilePath,
         propertySchema: {
           type: 'object',
           properties: {},
@@ -512,12 +524,16 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       const tags = ts.getJSDocTags(node);
       for (const tag of tags) {
         const tagConfig = componentTags.get(tag.tagName.text);
-        if (!tagConfig || tagConfig.to === 'name') continue;
+        if (!tagConfig) continue;
 
         const value = (tag.comment || '').toString().trim();
         if (!value) continue;
 
-        componentInfo[tagConfig.to] = value;
+        if (tagConfig.to === 'name') {
+          componentInfo.name = value;
+        } else {
+          componentInfo[tagConfig.to] = value;
+        }
         debugLog(`Set component ${tagConfig.to}: ${value}`);
       }
 
@@ -655,13 +671,13 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       if (!stored.componentName) {
         throw new Error(
           `@mcp-comp tag must have a value in file ${filePath}. ` +
-            `When multiple components are defined in one file, each component must have a unique name.`,
+          `When multiple components are defined in one file, each component must have a unique name.`,
         );
       }
       if (componentNames.has(stored.componentName)) {
         throw new Error(
           `Duplicate component name "${stored.componentName}" found in file ${filePath}. ` +
-            `Each component in a file must have a unique name.`,
+          `Each component in a file must have a unique name.`,
         );
       }
       componentNames.add(stored.componentName);
@@ -699,7 +715,12 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
     // Add new entries
     for (const data of newData) {
+      if (!data.name) {
+        console.warn(`Component in ${data.filePath} has no name, skipping...`);
+        continue;
+      }
       componentDataMap.set(data.name, data);
+      debugLog(`Updated component data for ${data.name} from ${data.filePath}`);
     }
   }
 
@@ -755,7 +776,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
       await saveSchemaOuputJson(
         Array.from(componentDataMap.values()).map(
-          ({ filePath, ...rest }) => rest,
+          ({ ...rest }) => rest,
         ),
       );
     },

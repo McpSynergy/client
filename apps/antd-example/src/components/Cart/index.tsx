@@ -1,12 +1,41 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { DeleteOutlined } from "@ant-design/icons";
 import { List, Button, Card, Space } from "antd";
+import { useIsMCPComponent } from "@mcp-synergy/react";
 
+
+/**
+ * @mcp-comp Cart
+ * @mcp-prop-path books
+ */
+export interface Book { 
+    id: string;    
+    title: string;
+    author: string;
+    cover: string;
+    price: number;
+    count: number;
+}
+
+/**
+ * @mcp-comp Cart
+ * @mcp-description Display shopping cart information
+ * @mcp-server-name mcp-component-render
+ */
+export interface BooksCartProps {
+  books?: Book[];
+  handleGoBack?: () => void;
+  onRemove?: (id: string) => void;
+}
 const Cart = ({
   books,
   handleGoBack,
   onRemove,
-}: {
-  books: {
+}: BooksCartProps) => {
+  
+  const isMCPComponent = useIsMCPComponent();
+
+  const myBooks = (books ?? JSON.parse(localStorage.getItem("cart") || "[]")) as {
     id: string;
     title: string;
     author: string;
@@ -14,9 +43,7 @@ const Cart = ({
     price: number;
     count: number;
   }[];
-  handleGoBack: () => void;
-  onRemove: (id: string) => void;
-}) => {
+  
   return (
     <Space
       direction="vertical"
@@ -26,21 +53,22 @@ const Cart = ({
     >
       <Card
         title={
-          <Button type="link" onClick={handleGoBack}>
+         !isMCPComponent && <Button type="link" onClick={handleGoBack}>
             Go Back
           </Button>
         }
       >
         <List
           itemLayout="horizontal"
-          dataSource={books}
+          dataSource={myBooks}
           renderItem={(item) => (
             <List.Item
-              actions={[
+              actions={!isMCPComponent  ? [
                 <Button
                   type="link"
                   onClick={() => {
-                    onRemove(item.id);
+                    // @ts-ignore
+                    onRemove?.(item.id);
                   }}
                   icon={<DeleteOutlined />}
                   shape="circle"
@@ -48,7 +76,7 @@ const Cart = ({
                 // <Button type="link" onClick={() => handleAdjustQuantity(item.id)}>
                 //   Adjust Quantity
                 // </Button>,
-              ]}
+              ] :[]}
             >
               <List.Item.Meta
                 avatar={
@@ -78,7 +106,7 @@ const Cart = ({
         <Space direction="vertical">
           <h2>
             Total: $
-            {books.reduce((acc, book) => acc + book.price, 0)?.toFixed(2)}
+            {myBooks.reduce((acc, book) => acc + book.price, 0)?.toFixed(2)}
           </h2>
           <Button type="primary">Checkout</Button>
         </Space>

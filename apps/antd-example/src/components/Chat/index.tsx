@@ -125,10 +125,7 @@ const Chat = () => {
             const meta = content?.meta;
 
             if (meta) {
-              console.log("meta", meta);
-
               const props = meta?.componentProps;
-
               return (
                 <>
                   {renderMarkdown(content?.content ?? content)}
