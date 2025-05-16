@@ -1,9 +1,96 @@
 import Search from "antd/es/input/Search";
-import { Space } from "antd";
-import { ShoppingCartOutlined } from "@ant-design/icons";
 import { Badge } from "antd";
+import { ShoppingCartOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import BookCard from "./BookCard";
+import styled from "styled-components";
+
+const ScrollableContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 24px;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #111111;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #444444;
+  }
+`;
+
+const Container = styled.div`
+  height: calc(100vh - 64px - 48px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+`;
+
+const SearchWrapper = styled.div`
+  width: 100%;
+  padding: 16px 24px;
+  background-color: #111111;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid #222222;
+
+  .ant-input-affix-wrapper {
+    background-color: #1a1a1a !important;
+    border-color: #222222 !important;
+    color: #ffffff !important;
+
+    &:hover {
+      border-color: #0070f3 !important;
+    }
+
+    &:focus {
+      border-color: #0070f3 !important;
+    }
+
+    .ant-input {
+      background-color: #1a1a1a !important;
+      color: #ffffff !important;
+
+      &::placeholder {
+        color: #666666 !important;
+      }
+    }
+  }
+
+  .ant-btn {
+    background-color: hsla(0, 0%, 93%, 1) !important;
+    border-color: hsla(0, 0%, 93%, 1) !important;
+    color: #000000 !important;
+
+    &:hover {
+      background-color: hsla(0, 0%, 85%, 1) !important;
+      border-color: hsla(0, 0%, 85%, 1) !important;
+    }
+
+    &:active {
+      background-color: hsla(0, 0%, 80%, 1) !important;
+      border-color: hsla(0, 0%, 80%, 1) !important;
+    }
+  }
+`;
 
 const Books = ({
   count,
@@ -99,65 +186,56 @@ const Books = ({
   const filteredBooks = books.filter(
     (book) =>
       book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchTerm.toLowerCase())
+      book.author.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
-    <div
-      style={{
-        height: "calc(100vh - 64px)",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        overflowY: "auto",
-      }}
-    >
-      <Space
-        direction="vertical"
-        size={24}
-        style={{ width: "100%", padding: "16px 24px 0" }}
-      >
+    <Container>
+      <SearchWrapper>
         <div
           style={{
             display: "flex",
             gap: "16px",
             alignItems: "center",
             justifyContent: "center",
+            maxWidth: "1200px",
+            margin: "0 auto",
           }}
         >
           <Search
-            placeholder="Enter search term"
+            placeholder="搜索书籍..."
             onSearch={(value) => setSearchTerm(value)}
             style={{ width: "calc(100% - 100px)" }}
             size="large"
           />
           <Badge
             count={count}
-            // 蓝色
-            style={{ backgroundColor: "#1890ff" }}
+            style={{
+              backgroundColor: "hsla(0, 0%, 93%, 1)",
+              color: "#000000",
+              cursor: "pointer",
+            }}
             onClick={onViewCart}
           >
-            <ShoppingCartOutlined style={{ fontSize: "24px" }} />
+            <ShoppingCartOutlined
+              style={{
+                fontSize: "24px",
+                color: "#FFFFFF",
+              }}
+            />
           </Badge>
         </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "24px",
-            overflowY: "auto",
-            flex: 1,
-            width: "100%",
-            padding: "0 24px 24px",
-          }}
-        >
-          {filteredBooks.map((book) => (
-            <BookCard book={book} addToCart={addToCart} />
-          ))}
-        </div>
-      </Space>
-    </div>
+      </SearchWrapper>
+      <ScrollableContainer>
+        {filteredBooks.map((book) => (
+          <BookCard
+            key={book.title + book.author}
+            book={book}
+            addToCart={addToCart}
+          />
+        ))}
+      </ScrollableContainer>
+    </Container>
   );
 };
 export default Books;

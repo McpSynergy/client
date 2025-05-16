@@ -1,0 +1,44 @@
+.book-card {
+  transition: all 0.3s ease;
+}
+
+.book-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.book-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #4a90e2;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+  text-align: left;
+  height: 2.8em;
+  /* 2行文本的高度 */
+  max-height: 2.8em;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.card-footer {
+  background: rgba(0, 0, 0, 0.75);
+  margin: 0 -16px -16px -16px;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.buy-button {
+  transition: all 0.3s ease;
+}
+
+.buy-button:hover {
+  background: #40a9ff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}

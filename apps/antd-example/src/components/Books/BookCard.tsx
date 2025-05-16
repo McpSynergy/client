@@ -1,5 +1,6 @@
 import { ShoppingCartOutlined } from "@ant-design/icons";
-import { Button, Card, Image, Space } from "antd";
+import { Button, Card, Image, Space, Tooltip } from "antd";
+import "./BookCard.css";
 
 const BookCard = ({
   book,
@@ -21,38 +22,67 @@ const BookCard = ({
   return (
     <Card
       key={book?.title + book?.author}
+      className="book-card"
       title={
-        <div
-          style={{ whiteSpace: "pre-wrap" }}
-        >{`${book?.title} by ${book?.author}`}</div>
+        <Tooltip title={`${book?.title} by ${book?.author}`}>
+          <div
+            className="book-title"
+            title={`${book?.title} by ${book?.author}`}
+          >
+            {book?.title}
+          </div>
+        </Tooltip>
       }
       cover={
-        <Image
-          height={300}
-          // width={100}
-          src={book.cover}
-        />
+        <div style={{ padding: "16px" }}>
+          <Image
+            height={200}
+            src={book.cover}
+            style={{
+              borderRadius: "8px",
+              objectFit: "cover",
+              transition: "transform 0.3s ease",
+            }}
+            preview={false}
+          />
+        </div>
       }
       style={{
         width: "100%",
         boxSizing: "border-box",
-        border: "1px solid #eee",
-        borderRadius: "8px",
+        border: "none",
+        borderRadius: "12px",
         padding: "16px",
         textAlign: "center",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         display: "flex",
         flexDirection: "column",
         height: "100%",
         maxWidth: "400px",
+        transition: "all 0.3s ease",
+        background: "#ffffff",
+        cursor: "pointer",
       }}
       actions={[
-        <Space key="price-buy">
+        <Space
+          key="price-buy"
+          className="card-footer"
+          style={{
+            width: "100%",
+            justifyContent: "center",
+            padding: "12px 0",
+            borderRadius: "12px",
+            overflow: "hidden",
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            margin: "0 -16px -16px -16px",
+          }}
+        >
           <span
             style={{
-              fontSize: "18px",
+              fontSize: "1.2rem",
               fontWeight: "bold",
-              color: "white",
+              color: "#ffffff",
+              marginRight: "12px",
             }}
           >
             ${book.price}
@@ -63,8 +93,19 @@ const BookCard = ({
             onClick={() => {
               addToCart(book);
             }}
+            className="buy-button"
+            style={{
+              borderRadius: "6px",
+              padding: "0 20px",
+              height: "36px",
+              fontSize: "0.9rem",
+              background: "#1890ff",
+              border: "none",
+              boxShadow: "0 2px 8px rgba(24,144,255,0.2)",
+              transition: "all 0.3s ease",
+            }}
           >
-            Buy
+            Buy Now
           </Button>
         </Space>,
       ]}

@@ -39,6 +39,10 @@ body {
   line-height: 1.5;
 }
 
+.ant-card-actions {
+  background-color: transparent !important;
+}
+
 body #root {
   height: 100%;
 }

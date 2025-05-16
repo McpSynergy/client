@@ -1,4 +1,11 @@
-import React, { lazy, Suspense, useEffect, useState, createContext, useContext } from "react";
+import React, {
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  createContext,
+  useContext,
+} from "react";
 import { ErrorBoundary } from "react-error-boundary";
 // @ts-ignore
 import MCPComponentImports from "virtual:mcp-comp/imports";
@@ -33,7 +40,6 @@ interface ChatComponentProps {
 }
 
 const validateComponent = (name: string, props: Record<string, any>) => {
-  
   const componentData = (MCPComponentData as ComponentSchema[]).find(
     (comp) => comp.name === name,
   );
@@ -63,8 +69,6 @@ export const ChatComponent = ({
   fallback = <div>Validating component...</div>,
   errorFallback = <div>Failed to validate component</div>,
 }: ChatComponentProps) => {
-  
-
   const DynamicComponent = useState(() =>
     lazy(() => MCPComponentImports[name]()),
   )[0];
@@ -74,6 +78,7 @@ export const ChatComponent = ({
   useEffect(() => {
     setIsValidating(true);
     setValidationError(null);
+
     if (!name) {
       setIsValidating(true);
       return;
@@ -98,13 +103,14 @@ export const ChatComponent = ({
   if (validationError) {
     return errorFallback;
   }
-
   return (
     <ErrorBoundary fallback={errorFallback}>
       <Suspense fallback={fallback}>
-        <MCPComponentContext.Provider value={{
-          isMCPComponent: true,
-        }}>
+        <MCPComponentContext.Provider
+          value={{
+            isMCPComponent: true,
+          }}
+        >
           <DynamicComponent _mcp_comp_name={name} {...props} />
         </MCPComponentContext.Provider>
       </Suspense>

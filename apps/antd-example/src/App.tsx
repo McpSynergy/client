@@ -1,8 +1,6 @@
 import { Avatar, Button, Flex, Layout, ConfigProvider, theme } from "antd";
 import React, { useEffect, useState } from "react";
 import Chat from "./components/Chat";
-// import UserProfile from './components/UserProfile';
-// import { ChatComponent } from "@mcp-synergy/react";
 import UserProfile from "./components/UserProfile";
 import { motion } from "framer-motion";
 import { Header } from "antd/es/layout/layout";
@@ -16,7 +14,7 @@ const { darkAlgorithm } = theme;
 const App: React.FC = () => {
   const [showChat, setShowChat] = useState(false);
   const [viewType, setViewType] = useState<"profile" | "books" | "cart">(
-    "books"
+    "books",
   );
   const [cart, setCart] = useState<
     {
@@ -54,7 +52,7 @@ const App: React.FC = () => {
       setCart([...cart, { ...book, id, count: 1 }]);
       localStorage.setItem(
         "cart",
-        JSON.stringify([...cart, { ...book, id, count: 1 }])
+        JSON.stringify([...cart, { ...book, id, count: 1 }]),
       );
     } else {
       const newCart = [...cart];
@@ -68,56 +66,100 @@ const App: React.FC = () => {
       theme={{
         algorithm: darkAlgorithm,
         token: {
-          colorBgContainer: "#1A1A1A",
-          colorBgElevated: "#2D2D2D",
-          colorText: "#E0E0E0",
-          colorTextSecondary: "#A0A0A0",
-          colorBorder: "#3D3D3D",
-          colorPrimary: "#4A9EFF",
-          borderRadius: 6,
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+          colorBgContainer: "#000000",
+          colorBgElevated: "#111111",
+          colorText: "#FFFFFF",
+          colorTextSecondary: "#888888",
+          colorBorder: "#222222",
+          colorPrimary: "hsla(0, 0%, 93%, 1)",
+          borderRadius: 8,
+          fontFamily:
+            "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        },
+        components: {
+          Input: {
+            colorBgContainer: "#111111",
+            colorBorder: "#222222",
+            colorText: "#FFFFFF",
+            colorTextPlaceholder: "#666666",
+            activeBorderColor: "#0070F3",
+            hoverBorderColor: "#0070F3",
+          },
+          Button: {
+            colorPrimary: "hsla(0, 0%, 93%, 1)",
+            colorPrimaryHover: "hsla(0, 0%, 85%, 1)",
+            colorPrimaryActive: "hsla(0, 0%, 80%, 1)",
+            colorTextLightSolid: "#000000",
+            colorBgContainer: "hsla(0, 0%, 93%, 1)",
+            colorBorder: "hsla(0, 0%, 93%, 1)",
+            colorText: "#000000",
+            colorBgTextHover: "hsla(0, 0%, 85%, 1)",
+            colorBgTextActive: "hsla(0, 0%, 80%, 1)",
+          },
         },
       }}
     >
       <Layout
         style={{
           height: "100%",
-          color: "#E0E0E0",
-          background: "#1A1A1A",
+          color: "#FFFFFF",
+          background: "#000000",
         }}
       >
         <Header
           style={{
-            backgroundColor: "#2D2D2D",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-            color: "#E0E0E0",
-            borderBottom: "1px solid #3D3D3D",
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            backdropFilter: "blur(20px)",
+            boxShadow: "0 1px 0 rgba(255, 255, 255, 0.1)",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+            position: "sticky",
+            top: 0,
+            zIndex: 1000,
           }}
         >
           <Flex justify="space-between" align="center">
-            <h1 style={{ color: "#E0E0E0" }}>MCP'R</h1>
+            <h1
+              style={{
+                color: "#FFFFFF",
+                fontSize: "1.5rem",
+                fontWeight: 700,
+                letterSpacing: "-0.5px",
+                margin: 0,
+              }}
+            >
+              MCP'R
+            </h1>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 flex: 1,
                 justifyContent: "center",
+                gap: "12px",
               }}
             >
-              <span>Hi</span>
+              <span style={{ color: "#888888" }}>Hi</span>
               <Avatar
                 src="https://api.dicebear.com/7.x/miniavs/svg?seed=1"
                 icon={<UserOutlined />}
-                style={{ marginRight: 8 }}
+                style={{
+                  marginRight: 8,
+                  background: "#87d068",
+                  border: "2px solid rgba(255, 255, 255, 0.1)",
+                }}
               />
-              <span>John Doe, welcome use. </span>
+              <span style={{ color: "#FFFFFF" }}>John Doe, welcome use. </span>
               {viewType !== "cart" && (
                 <u
                   style={{
                     cursor: "pointer",
-                    color: "#4A9EFF",
-                    fontWeight: "bold",
+                    color: "#0070F3",
+                    fontWeight: 600,
                     userSelect: "none",
+                    textDecoration: "none",
+                    borderBottom: "1px solid #0070F3",
+                    transition: "all 0.2s ease",
                   }}
                   onClick={() => {
                     setViewType(viewType === "profile" ? "books" : "profile");
@@ -131,18 +173,21 @@ const App: React.FC = () => {
               style={{
                 display: "flex",
                 alignItems: "center",
+                gap: "12px",
               }}
             >
-              <span>Click use 👉</span>
+              <span style={{ color: "#888888" }}>Click use 👉</span>
               <Button
                 type="primary"
                 icon={
                   <img src="https://mdn.alipayobjects.com/huamei_iwk9zp/afts/img/A*s5sNRo5LjfQAAAAAAAAAAAAADgCCAQ/fmt.webp" />
                 }
-                style={{ 
+                style={{
                   marginLeft: 8,
-                  backgroundColor: "#4A9EFF",
-                  borderColor: "#4A9EFF",
+                  backgroundColor: "#0070F3",
+                  borderColor: "#0070F3",
+                  boxShadow: "0 2px 8px rgba(0, 112, 243, 0.3)",
+                  transition: "all 0.2s ease",
                 }}
                 shape="circle"
                 onClick={() => {
@@ -152,19 +197,28 @@ const App: React.FC = () => {
             </div>
           </Flex>
         </Header>
-        <Content style={{ background: "#1A1A1A" }}>
+        <Content
+          style={{
+            background: "#000000",
+            padding: "24px",
+          }}
+        >
           <Flex
             style={{
               width: "100%",
               height: "100%",
             }}
-            gap={0}
+            gap={24}
           >
             <div
               style={{
                 minHeight: 380,
                 flex: 1,
                 width: "100%",
+                background: "#111111",
+                borderRadius: "12px",
+                padding: "24px",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
               }}
             >
               {viewType === "cart" && (
@@ -224,7 +278,16 @@ const App: React.FC = () => {
                   opacity: showChat ? 1 : 0,
                   width: showChat ? 500 : 0,
                 }}
-                transition={{ duration: 0.5 }}
+                transition={{
+                  duration: 0.3,
+                  ease: "easeInOut",
+                }}
+                style={{
+                  background: "#111111",
+                  borderRadius: "12px",
+                  overflow: "hidden",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                }}
               >
                 <Chat />
               </motion.div>
