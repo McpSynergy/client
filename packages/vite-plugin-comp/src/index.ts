@@ -1103,6 +1103,13 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     // Handle build completion
     async buildEnd() {
       await saveSchemaOuputJson();
+      // 发送配置
+      if (options.pushConfig) {
+        await configService.pushConfig(
+          Array.from(componentDataMap.values()),
+          options.pushConfig
+        );
+      }
     },
   };
 }

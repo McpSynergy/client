@@ -31,11 +31,11 @@ body {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #1A1A1A;
+  color: #E0E0E0;
   line-height: 1.5;
 }
 
@@ -71,4 +71,79 @@ textarea {
   font-size: 100%;
   line-height: 1.15;
   margin: 0;
+}
+
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2D2D2D;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4D4D4D;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5D5D5D;
+}
+
+/* 输入框暗色主题样式 */
+.ant-input {
+  background-color: #2D2D2D !important;
+  border-color: #3D3D3D !important;
+  color: #E0E0E0 !important;
+}
+
+.ant-input:hover,
+.ant-input:focus {
+  border-color: #4A9EFF !important;
+}
+
+/* 卡片暗色主题样式 */
+.ant-card {
+  background-color: #2D2D2D !important;
+  border-color: #3D3D3D !important;
+}
+
+.ant-card-head {
+  border-bottom-color: #3D3D3D !important;
+}
+
+/* 下拉菜单暗色主题样式 */
+.ant-dropdown-menu {
+  background-color: #2D2D2D !important;
+  border-color: #3D3D3D !important;
+}
+
+.ant-dropdown-menu-item {
+  color: #E0E0E0 !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background-color: #3D3D3D !important;
+}
+
+/* 表格暗色主题样式 */
+.ant-table {
+  background-color: #2D2D2D !important;
+  color: #E0E0E0 !important;
+}
+
+.ant-table-thead>tr>th {
+  background-color: #1A1A1A !important;
+  color: #E0E0E0 !important;
+  border-bottom-color: #3D3D3D !important;
+}
+
+.ant-table-tbody>tr>td {
+  border-bottom-color: #3D3D3D !important;
+}
+
+.ant-table-tbody>tr:hover>td {
+  background-color: #3D3D3D !important;
 }

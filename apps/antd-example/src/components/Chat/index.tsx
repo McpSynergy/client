@@ -4,6 +4,7 @@ import {
   Bubble,
   BubbleProps,
   Sender,
+  Suggestion,
   useXAgent,
   useXChat,
 } from "@ant-design/x";
@@ -29,10 +30,15 @@ const roles: GetProp<typeof Bubble.List, "roles"> = {
   },
 };
 
+type SuggestionItems = Exclude<GetProp<typeof Suggestion, 'items'>, () => void>;
+
+const suggestions: SuggestionItems = [
+  { label: 'Show me the cart', value: 'cart' },
+  { label: 'Show {{ name }} info', value: 'user' },
+];
+
 const Chat = () => {
   const [content, setContent] = React.useState("");
-
-  // ...数据做渲染
 
   const renderMarkdown: BubbleProps["messageRender"] = (content) => (
     <Typography>
@@ -41,51 +47,43 @@ const Chat = () => {
     </Typography>
   );
 
-  // Agent for request
   const [agent] = useXAgent({
     request: async ({ message }, { onSuccess, onError }) => {
-      fetch("http://localhost:3000/message", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-signature":
-            "f3de0210ee9003d84626476c631ffc0d1ddf0c268696d7d3e2caa5a3b71273b6",
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: message,
-            },
-          ],
-        }),
-      })
-        .then(async (response) => {
-          console.log("response", response);
-          const reader = response?.body?.getReader();
-          if (!reader) return;
-          let fullResponse = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = new TextDecoder().decode(value);
-            fullResponse += chunk;
-          }
-          const res = JSON.parse(fullResponse);
-          if (res?.code !== 0) {
-            onError(new Error("Failed return. Please try again later."));
-          }
-          console.log("res?.data", res?.data);
-
-          onSuccess(res?.data);
-        })
-        .catch((error) => {
-          onError(error);
+      try {
+        const response = await fetch("http://localhost:3000/message", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-signature": "f3de0210ee9003d84626476c631ffc0d1ddf0c268696d7d3e2caa5a3b71273b6",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: message }],
+          }),
         });
+
+        const reader = response?.body?.getReader();
+        if (!reader) return;
+
+        let fullResponse = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          fullResponse += new TextDecoder().decode(value);
+        }
+
+        const res = JSON.parse(fullResponse);
+        if (res?.code !== 0) {
+          onError(new Error("Failed return. Please try again later."));
+          return;
+        }
+
+        onSuccess(res?.data);
+      } catch (error) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      }
     },
   });
 
-  // Chat messages
   const { onRequest, messages } = useXChat({
     defaultMessages: [
       {
@@ -99,13 +97,34 @@ const Chat = () => {
     requestFallback: "Mock failed return. Please try again later.",
   });
 
+  const renderMessage = (content: any, status: string) => {
+    if (status === "loading" || status === "local") {
+      return content;
+    }
+
+    const meta = content?.meta;
+    if (meta) {
+      const props = meta?.componentProps;
+      return (
+        <>
+          {renderMarkdown(content?.content ?? content)}
+          <Suspense fallback="loading...">
+            <ChatComponent name={meta.toolName} props={props} />
+          </Suspense>
+        </>
+      );
+    }
+
+    return renderMarkdown(content?.content ?? content);
+  };
+
   return (
     <Flex
       vertical
       gap="middle"
       style={{
         height: "100%",
-        borderLeft: "1px solid #e8e8e8",
+        borderLeft: "1px solid #141414",
         padding: 16,
       }}
     >
@@ -117,39 +136,38 @@ const Chat = () => {
           loading: status === "loading",
           role: status === "local" ? "local" : "ai",
           content: message,
-          messageRender: (content: any) => {
-            if (status === "loading" || status === "local") {
-              return content;
-            }
-
-            const meta = content?.meta;
-
-            if (meta) {
-              const props = meta?.componentProps;
-              return (
-                <>
-                  {renderMarkdown(content?.content ?? content)}
-
-                  <Suspense fallback={"loading..."}>
-                    <ChatComponent name={meta.toolName} props={props} />
-                  </Suspense>
-                </>
-              );
-            }
-
-            return renderMarkdown(content?.content ?? content);
-          },
+          messageRender: (content) => renderMessage(content, status),
         }))}
       />
-      <Sender
-        loading={agent.isRequesting()}
-        value={content}
-        onChange={setContent}
-        onSubmit={(nextContent) => {
-          onRequest(nextContent);
-          setContent("");
+
+      <Suggestion
+        items={suggestions}
+        onSelect={(itemVal) => {
+          const content_ = suggestions.find((suggestion) => suggestion.value === itemVal)?.label;
+          setContent(content_?.toString() ?? "");
         }}
-      />
+      >
+        {({onTrigger, onKeyDown}) => (
+          <Sender
+            loading={agent.isRequesting()}
+            value={content}
+            onChange={(nextVal) => {
+              if (nextVal === '/') {
+                onTrigger();
+              } else if (!nextVal) {
+                onTrigger(false);
+              }
+              setContent(nextVal);
+            }}
+            onSubmit={(nextContent) => {
+              onRequest(nextContent);
+              setContent("");
+            }}
+            onKeyDown={onKeyDown}
+            placeholder="输入 / 获取建议"
+          />
+        )}
+      </Suggestion>
     </Flex>
   );
 };

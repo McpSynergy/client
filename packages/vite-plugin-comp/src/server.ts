@@ -20,6 +20,11 @@ export class ConfigPushService {
     headers?: Record<string, string>;
     [key: string]: any;
   }) {
+
+    console.log({
+      options
+    });
+
     const { serverUrl, projectId, env, headers, ...rest } = options;
     try {
 

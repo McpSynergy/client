@@ -52,7 +52,7 @@ const BookCard = ({
             style={{
               fontSize: "18px",
               fontWeight: "bold",
-              color: "#333",
+              color: "white",
             }}
           >
             ${book.price}
