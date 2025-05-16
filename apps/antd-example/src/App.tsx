@@ -128,7 +128,7 @@ const App: React.FC = () => {
                 margin: 0,
               }}
             >
-              MCP'R
+              MCP <cite>Render</cite>
             </h1>
             <div
               style={{
@@ -149,7 +149,7 @@ const App: React.FC = () => {
                   border: "2px solid rgba(255, 255, 255, 0.1)",
                 }}
               />
-              <span style={{ color: "#FFFFFF" }}>John Doe, welcome use. </span>
+              <span style={{ color: "#FFFFFF" }}>John Doe, Welcome use. </span>
               {viewType !== "cart" && (
                 <u
                   style={{
@@ -176,7 +176,7 @@ const App: React.FC = () => {
                 gap: "12px",
               }}
             >
-              <span style={{ color: "#888888" }}>Click use 👉</span>
+              {/* <span style={{ color: "#888888" }}>Click use 👉</span> */}
               <Button
                 type="primary"
                 icon={
@@ -184,10 +184,11 @@ const App: React.FC = () => {
                 }
                 style={{
                   marginLeft: 8,
-                  backgroundColor: "#0070F3",
+                  background: "#fde3cf",
                   borderColor: "#0070F3",
                   boxShadow: "0 2px 8px rgba(0, 112, 243, 0.3)",
                   transition: "all 0.2s ease",
+                  cursor: "pointer",
                 }}
                 shape="circle"
                 onClick={() => {
