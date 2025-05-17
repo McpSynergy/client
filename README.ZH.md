@@ -2,22 +2,16 @@
 
 [English](README.md) | 简体中文
 
-McpSynergy Client 是一个基于 React 的现代化前端项目，采用 TypeScript 和 Vite 构建，使用 pnpm 作为包管理工具，并通过 Turborepo 实现 monorepo 架构。
+McpSynergy Client 是一个基于 MCP 协议实现在客户端渲染 UI 组件的方案。他可以在你的智能聊天框中渲染可交互的 UI 组件，进一步的增强智能助手的能力。
 
 * **快速开发：** 基于 Vite 6 的快速开发体验，支持热更新和即时构建。
 * **类型安全：** 使用 TypeScript 提供完整的类型支持，让开发更加可靠。
 * **模块化：** 采用 Turborepo 实现 monorepo 架构，支持多包管理和代码共享。
 * **统一规范：** 使用 Prettier 进行代码格式化，确保代码风格统一。
+* **前后端方案：** 在 Vite 插件内部实现开发时前后端热更新机制，更新配置文件。
 
-## 安装
 
-McpSynergy Client 支持多种安装方式：
-
-* 使用 [快速开始](#快速开始) 快速体验项目。
-* [添加到现有项目](#添加到现有项目) 以渐进式采用。
-* [创建新项目](#创建新项目) 如果你需要一个完整的开发环境。
-
-### 快速开始
+## 快速开始
 
 ```bash
 # 克隆仓库
@@ -37,28 +31,23 @@ pnpm dev
 
 你可以在以下位置找到 McpSynergy Client 的文档：
 
-* [快速开始](#快速开始)
-* [项目结构](#项目结构)
-* [开发指南](#开发指南)
-* [API 参考](#api-参考)
-* [贡献指南](#贡献指南)
-
 ## 示例
 
 这里是一个简单的示例：
 
 ```tsx
-import { createRoot } from 'react-dom/client';
+import { ChatComponent } from "@mcp-synergy/react";
 
-function HelloMessage({ name }: { name: string }) {
-  return <div>Hello {name}</div>;
-}
+// 大模型请求
+const data = request('url')
+const content = data?.content
+const meta = data?.meta;
+const props = meta?.componentProps;
 
-const root = createRoot(document.getElementById('container')!);
-root.render(<HelloMessage name="McpSynergy" />);
+return <ChatComponent name={meta.toolName} props={props} fallback={<></>} />
 ```
 
-这个示例将在页面上渲染 "Hello McpSynergy"。
+这个示例将在页面上渲染服务端 mcp 需要渲染的 UI 组件。
 
 ## 项目结构
 

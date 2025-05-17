@@ -2,12 +2,13 @@
 
 English | [简体中文](README.ZH.md)
 
-McpSynergy Client is a modern frontend project based on React, built with TypeScript and Vite, using pnpm as the package manager, and implementing monorepo architecture through Turborepo.
+McpSynergy Client is a solution that implements UI component rendering on the client side based on the MCP protocol. It can render interactive UI components in your intelligent chat box, further enhancing the capabilities of AI assistants.
 
 * **Rapid Development:** Fast development experience based on Vite 6, supporting hot updates and instant builds.
 * **Type Safety:** Complete type support with TypeScript, making development more reliable.
 * **Modularity:** Monorepo architecture implemented with Turborepo, supporting multi-package management and code sharing.
 * **Unified Standards:** Code formatting with Prettier ensures consistent code style.
+* **Full Stack Solution:** Implements frontend and backend hot update mechanisms within Vite plugins, updating configuration files.
 
 ## Installation
 
@@ -21,10 +22,7 @@ McpSynergy Client supports multiple installation methods:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/mcps-client.git
-
-# Enter the project directory
-cd mcps-client
+git clone git@github.com:McpSynergy/client.git
 
 # Install dependencies
 pnpm install
@@ -39,8 +37,6 @@ You can find McpSynergy Client documentation at:
 
 * [Quick Start](#quick-start)
 * [Project Structure](#project-structure)
-* [Development Guide](#development-guide)
-* [API Reference](#api-reference)
 * [Contributing Guide](#contributing-guide)
 
 ## Examples
@@ -48,17 +44,18 @@ You can find McpSynergy Client documentation at:
 Here's a simple example:
 
 ```tsx
-import { createRoot } from 'react-dom/client';
+import { ChatComponent } from "@mcp-synergy/react";
 
-function HelloMessage({ name }: { name: string }) {
-  return <div>Hello {name}</div>;
-}
+// AI model request
+const data = request('url')
+const content = data?.content
+const meta = data?.meta;
+const props = meta?.componentProps;
 
-const root = createRoot(document.getElementById('container')!);
-root.render(<HelloMessage name="McpSynergy" />);
+return <ChatComponent name={meta.toolName} props={props} fallback={<></>} />
 ```
 
-This example will render "Hello McpSynergy" on the page.
+This example will render the UI component required by the server-side MCP.
 
 ## Project Structure
 
