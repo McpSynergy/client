@@ -237,7 +237,7 @@ const App: React.FC = () => {
         style={{
           height: "100vh",
           color: "#FFFFFF",
-          background: "#000000",
+          background: "rgb(0, 0, 0)",
           position: "relative",
           overflow: "hidden",
         }}
@@ -256,8 +256,9 @@ const App: React.FC = () => {
           <Flex
             style={{
               width: "100%",
-              minHeight: "100%",
+              // minHeight: "100%",
               position: "relative",
+              height: "100%",
             }}
             gap={24}
             wrap={isMobile ? "wrap" : "nowrap"}
