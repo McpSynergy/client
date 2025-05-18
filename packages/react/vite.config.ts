@@ -2,6 +2,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, type UserConfig } from "vite";
 
 const baseConfig: UserConfig = {
+  // @ts-ignore
   plugins: [react()],
   build: {
     emptyOutDir: false,

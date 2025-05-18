@@ -16,10 +16,22 @@ import styled from "styled-components";
 const md = markdownit({ html: true, breaks: true });
 
 const StyledSenderWrapper = styled.div`
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #111111;
+  padding: 16px;
+  border-top: 1px solid #222222;
+  z-index: 2;
+
   .ant-input {
     background-color: #111111 !important;
     border-color: #222222 !important;
     color: #ffffff !important;
+    font-size: 16px !important;
+    height: 44px !important;
+    padding: 8px 12px !important;
 
     &:hover {
       border-color: #0070f3 !important;
@@ -31,12 +43,15 @@ const StyledSenderWrapper = styled.div`
 
     &::placeholder {
       color: #666666 !important;
+      font-size: 16px !important;
     }
   }
 
   .ant-input-affix-wrapper {
     background-color: #111111 !important;
     border-color: #222222 !important;
+    height: 44px !important;
+    padding: 0 12px !important;
 
     &:hover {
       border-color: #0070f3 !important;
@@ -44,6 +59,30 @@ const StyledSenderWrapper = styled.div`
 
     &:focus {
       border-color: #0070f3 !important;
+    }
+
+    .ant-input {
+      height: 42px !important;
+      padding: 0 !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px;
+
+    .ant-input {
+      font-size: 16px !important;
+      height: 48px !important;
+      padding: 8px 16px !important;
+    }
+
+    .ant-input-affix-wrapper {
+      height: 48px !important;
+      padding: 0 16px !important;
+
+      .ant-input {
+        height: 46px !important;
+      }
     }
   }
 `;
@@ -80,6 +119,11 @@ const suggestions: SuggestionItems = [
 
 const Chat = () => {
   const [content, setContent] = React.useState("");
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const renderMarkdown: BubbleProps["messageRender"] = (content) => (
     <Typography>
@@ -91,7 +135,7 @@ const Chat = () => {
   const [agent] = useXAgent({
     request: async ({ message }, { onSuccess, onError }) => {
       try {
-        const response = await fetch("http://localhost:3000/message", {
+        const response = await fetch("/message", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -139,6 +183,12 @@ const Chat = () => {
     requestFallback: "Mock failed return. Please try again later.",
   });
 
+  React.useEffect(() => {
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+  }, [messages]);
+
   const renderMessage = (content: any, status: string) => {
     if (status === "loading") {
       return content;
@@ -165,24 +215,31 @@ const Chat = () => {
   return (
     <Flex
       vertical
-      gap="middle"
       style={{
         height: "100%",
         borderLeft: "1px solid #141414",
-        padding: 16,
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <Bubble.List
-        roles={roles}
-        style={{ flex: 1, paddingTop: 8 }}
-        items={messages.map(({ id, message, status }) => ({
-          key: id,
-          loading: status === "loading",
-          role: status === "local" ? "local" : "ai",
-          content: message,
-          messageRender: (content) => renderMessage(content, status),
-        }))}
-      />
+      <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
+        <Bubble.List
+          roles={roles}
+          style={{ paddingTop: 8 }}
+          items={messages.map(({ id, message, status }) => ({
+            key: id,
+            loading: status === "loading",
+            role: status === "local" ? "local" : "ai",
+            content: message,
+            messageRender: (content) => {
+              scrollToBottom();
+              return renderMessage(content, status);
+            },
+          }))}
+        />
+        <div ref={messagesEndRef} />
+      </div>
 
       <Suggestion
         items={suggestions}
@@ -211,7 +268,7 @@ const Chat = () => {
                 setContent("");
               }}
               onKeyDown={onKeyDown}
-              placeholder="输入 / 获取建议"
+              placeholder={`Input "/" to get suggestions`}
             />
           </StyledSenderWrapper>
         )}

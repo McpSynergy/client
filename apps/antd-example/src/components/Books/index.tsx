@@ -16,6 +16,12 @@ const ScrollableContainer = styled.div`
   box-sizing: border-box;
   margin-bottom: 24px;
 
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
   &::-webkit-scrollbar {
     width: 8px;
   }
@@ -51,6 +57,10 @@ const SearchWrapper = styled.div`
   top: 0;
   z-index: 1;
   border-bottom: 1px solid #222222;
+
+  @media (max-width: 768px) {
+    padding: 12px 16px;
+  }
 
   .ant-input-affix-wrapper {
     background-color: #1a1a1a !important;
@@ -203,7 +213,7 @@ const Books = ({
           }}
         >
           <Search
-            placeholder="搜索书籍..."
+            placeholder="Search books..."
             onSearch={(value) => setSearchTerm(value)}
             style={{ width: "calc(100% - 100px)" }}
             size="large"
