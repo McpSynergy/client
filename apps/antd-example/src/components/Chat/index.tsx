@@ -183,11 +183,11 @@ const Chat = () => {
     requestFallback: "Mock failed return. Please try again later.",
   });
 
-  React.useEffect(() => {
-    setTimeout(() => {
-      scrollToBottom();
-    }, 100);
-  }, [messages]);
+  // React.useEffect(() => {
+  //   setTimeout(() => {
+  //     scrollToBottom();
+  //   });
+  // }, [messages]);
 
   const renderMessage = (content: any, status: string) => {
     if (status === "loading") {
@@ -233,7 +233,6 @@ const Chat = () => {
             role: status === "local" ? "local" : "ai",
             content: message,
             messageRender: (content) => {
-              scrollToBottom();
               return renderMessage(content, status);
             },
           }))}
