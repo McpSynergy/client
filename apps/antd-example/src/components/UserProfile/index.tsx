@@ -32,6 +32,9 @@ interface Stats {
  * @mcp-prop-path user
  */
 export interface User {
+  /**
+   * @mcp-input-required user name
+   */
   name: string;
   title: string;
   avatar: string;

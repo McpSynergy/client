@@ -1,5 +1,5 @@
 import { Avatar, Button, Flex, Layout, ConfigProvider, theme } from "antd";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Chat from "./components/Chat";
 import UserProfile from "./components/UserProfile";
 import { motion } from "framer-motion";
@@ -8,6 +8,7 @@ import { UserOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import Books from "./components/Books";
 import Cart from "./components/Cart";
 import { useMediaQuery } from "react-responsive";
+import { GlobalProvider, useUser } from "./context/GlobalContext";
 
 const { Content } = Layout;
 const { darkAlgorithm } = theme;
@@ -52,9 +53,9 @@ const themeConfig = {
 
 // 抽离头部组件
 const AppHeader: React.FC<{
-  viewType: "profile" | "books" | "cart";
   setViewType: (type: "profile" | "books" | "cart") => void;
-}> = ({ viewType, setViewType }) => {
+}> = ({ setViewType }) => {
+  const { user } = useUser();
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
   return (
@@ -81,11 +82,11 @@ const AppHeader: React.FC<{
               margin: 0,
             }}
           >
-            MCP <cite>Render</cite>
+            MCP <cite>Render demo</cite>
           </h1>
         </Flex>
         <Avatar
-          src="https://api.dicebear.com/7.x/miniavs/svg?seed=1"
+          src={user.avatar}
           icon={<UserOutlined />}
           style={{
             background: "#87d068",
@@ -102,31 +103,11 @@ const AppHeader: React.FC<{
   );
 };
 
-// 定义类型
-interface Book {
-  id: string;
-  title: string;
-  author: string;
-  cover: string;
-  price: number;
-  count: number;
-}
-
-interface BookInput {
-  title: string;
-  author: string;
-  cover: string;
-  price: number;
-}
-
 // 抽离主内容区域组件
 const MainContent: React.FC<{
   viewType: "profile" | "books" | "cart";
-  cart: Book[];
-  setCart: (cart: Book[]) => void;
-  addToCart: (book: BookInput) => void;
   setViewType: (type: "profile" | "books" | "cart") => void;
-}> = ({ viewType, cart, setCart, addToCart, setViewType }) => {
+}> = ({ viewType, setViewType }) => {
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
   return (
@@ -143,61 +124,30 @@ const MainContent: React.FC<{
     >
       {viewType === "cart" && (
         <Cart
-          books={cart}
           handleGoBack={() => {
             setViewType("books");
-          }}
-          onRemove={(id) => {
-            const newCart = cart.filter((item) => item.id !== id);
-            setCart(newCart);
-            localStorage.setItem("cart", JSON.stringify(newCart));
           }}
         />
       )}
       {viewType === "books" && (
         <Books
-          count={cart.reduce((c, o) => {
-            return c + o.count;
-          }, 0)}
-          addToCart={addToCart}
           onViewCart={() => {
             setViewType("cart");
           }}
         />
       )}
       {viewType === "profile" && (
-        <UserProfile
-          user={{
-            company: "Example Corp",
-            name: "John Doe",
-            title: "Senior Developer",
-            avatar: "https://api.dicebear.com/7.x/miniavs/svg?seed=1",
-            email: "john.doe@example.com",
-            phone: "+1 234 567 890",
-            skills: [
-              { name: "JavaScript", color: "gold" },
-              { name: "React", color: "cyan" },
-              { name: "Node.js", color: "green" },
-            ],
-            stats: {
-              projects: 24,
-              followers: 1489,
-              following: 583,
-            },
-          }}
-          onGoBack={() => setViewType("books")}
-        />
+        <UserProfile onGoBack={() => setViewType("books")} />
       )}
     </div>
   );
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [showChat, setShowChat] = useState(false);
   const [viewType, setViewType] = useState<"profile" | "books" | "cart">(
     "books",
   );
-  const [cart, setCart] = useState<Book[]>([]);
   const isMounted = React.useRef(false);
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
@@ -206,30 +156,6 @@ const App: React.FC = () => {
       isMounted.current = true;
     }
   }, []);
-
-  useEffect(() => {
-    const cart = localStorage.getItem("cart");
-    if (cart) {
-      setCart(JSON.parse(cart));
-    }
-  }, []);
-
-  const addToCart = (book: BookInput) => {
-    const id = book.title + book.author;
-    const index = cart.findIndex((item) => item.id === id);
-    if (index === -1) {
-      setCart([...cart, { ...book, id, count: 1 }]);
-      localStorage.setItem(
-        "cart",
-        JSON.stringify([...cart, { ...book, id, count: 1 }]),
-      );
-    } else {
-      const newCart = [...cart];
-      newCart[index].count += 1;
-      localStorage.setItem("cart", JSON.stringify(newCart));
-      setCart(newCart);
-    }
-  };
 
   return (
     <ConfigProvider theme={themeConfig}>
@@ -242,7 +168,7 @@ const App: React.FC = () => {
           overflow: "hidden",
         }}
       >
-        <AppHeader viewType={viewType} setViewType={setViewType} />
+        <AppHeader setViewType={setViewType} />
         <Content
           style={{
             background: "#000000",
@@ -256,20 +182,13 @@ const App: React.FC = () => {
           <Flex
             style={{
               width: "100%",
-              // minHeight: "100%",
               position: "relative",
               height: "100%",
             }}
             gap={24}
             wrap={isMobile ? "wrap" : "nowrap"}
           >
-            <MainContent
-              viewType={viewType}
-              cart={cart}
-              setCart={setCart}
-              addToCart={addToCart}
-              setViewType={setViewType}
-            />
+            <MainContent viewType={viewType} setViewType={setViewType} />
             {isMounted.current && (
               <motion.div
                 initial={{
@@ -369,6 +288,14 @@ const App: React.FC = () => {
         )}
       </Layout>
     </ConfigProvider>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <GlobalProvider>
+      <AppContent />
+    </GlobalProvider>
   );
 };
 

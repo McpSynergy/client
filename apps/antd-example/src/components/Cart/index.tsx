@@ -1,21 +1,7 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { DeleteOutlined } from "@ant-design/icons";
 import { List, Button, Card, Space } from "antd";
 import { useIsMCPComponent } from "@mcp-synergy/react";
-
-
-/**
- * @mcp-comp Cart
- * @mcp-prop-path books
- */
-export interface Book { 
-    id: string;    
-    title: string;
-    author: string;
-    cover: string;
-    price: number;
-    count: number;
-}
+import { useCart } from "../../context/GlobalContext";
 
 /**
  * @mcp-comp Cart
@@ -23,27 +9,13 @@ export interface Book {
  * @mcp-server-name mcp-component-render
  */
 export interface BooksCartProps {
-  books?: Book[];
   handleGoBack?: () => void;
-  onRemove?: (id: string) => void;
 }
-const Cart = ({
-  books,
-  handleGoBack,
-  onRemove,
-}: BooksCartProps) => {
-  
-  const isMCPComponent = useIsMCPComponent();
 
-  const myBooks = (books ?? JSON.parse(localStorage.getItem("cart") || "[]")) as {
-    id: string;
-    title: string;
-    author: string;
-    cover: string;
-    price: number;
-    count: number;
-  }[];
-  
+const Cart = ({ handleGoBack }: BooksCartProps) => {
+  const isMCPComponent = useIsMCPComponent();
+  const { cart, removeFromCart, total, clearCart } = useCart();
+
   return (
     <Space
       direction="vertical"
@@ -53,37 +25,40 @@ const Cart = ({
     >
       <Card
         title={
-         !isMCPComponent && <Button type="link" onClick={handleGoBack}>
-            Go Back
-          </Button>
+          !isMCPComponent && (
+            <Button type="link" onClick={handleGoBack}>
+              Go Back
+            </Button>
+          )
         }
       >
         <List
           itemLayout="horizontal"
-          dataSource={myBooks}
+          dataSource={cart}
           renderItem={(item) => (
             <List.Item
-              actions={!isMCPComponent  ? [
-                <Button
-                  type="link"
-                  onClick={() => {
-                    // @ts-ignore
-                    onRemove?.(item.id);
-                  }}
-                  icon={<DeleteOutlined />}
-                  shape="circle"
-                ></Button>,
-                // <Button type="link" onClick={() => handleAdjustQuantity(item.id)}>
-                //   Adjust Quantity
-                // </Button>,
-              ] :[]}
+              actions={
+                !isMCPComponent
+                  ? [
+                      <Button
+                        type="link"
+                        onClick={() => {
+                          removeFromCart(item.id);
+                        }}
+                        icon={<DeleteOutlined />}
+                        shape="circle"
+                        danger
+                      ></Button>,
+                    ]
+                  : []
+              }
             >
               <List.Item.Meta
                 avatar={
                   <img
                     src={item.cover}
                     alt={item.title}
-                    style={{ width: 50, height: 50 }}
+                    style={{ width: 50, height: 50, objectFit: "cover" }}
                   />
                 }
                 title={
@@ -91,7 +66,7 @@ const Cart = ({
                     {item.title}
                   </span>
                 }
-                description={`Price: $${item.price} | Quantity: ${item.count}`}
+                description={`Price: $${item.price} | Count: ${item.count}`}
               />
             </List.Item>
           )}
@@ -104,11 +79,25 @@ const Cart = ({
         }}
       >
         <Space direction="vertical">
-          <h2>
-            Total: $
-            {myBooks.reduce((acc, book) => acc + book.price, 0)?.toFixed(2)}
-          </h2>
-          <Button type="primary">Checkout</Button>
+          <h2>总计: ${total.toFixed(2)}</h2>
+          <Space>
+            <Button
+              onClick={() => {
+                clearCart();
+              }}
+            >
+              Reset
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => {
+                alert("Checkout done");
+                clearCart();
+              }}
+            >
+              Checkout
+            </Button>
+          </Space>
         </Space>
       </Card>
     </Space>

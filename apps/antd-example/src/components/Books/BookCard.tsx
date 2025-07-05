@@ -1,35 +1,35 @@
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import { Button, Card, Image, Space, Tooltip } from "antd";
 import "./BookCard.css";
+import { Book } from "../../context/GlobalContext";
 
 const BookCard = ({
   book,
   addToCart,
 }: {
-  book: {
-    title: string;
-    author: string;
-    cover: string;
-    price: number;
-  };
-  addToCart: (book: {
-    title: string;
-    author: string;
-    cover: string;
-    price: number;
-  }) => void;
+  book: Book;
+  addToCart: () => void;
 }) => {
   return (
     <Card
-      key={book?.title + book?.author}
+      key={book.id}
       className="book-card"
       title={
-        <Tooltip title={`${book?.title} by ${book?.author}`}>
+        <Tooltip title={`${book.title} by ${book.author}`}>
+          <div className="book-title" title={`${book.title} by ${book.author}`}>
+            {book.title}
+          </div>
+          {/* 作者 换行*/}
           <div
-            className="book-title"
-            title={`${book?.title} by ${book?.author}`}
+            style={{
+              fontSize: "12px",
+              color: "#999",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+            }}
+            title={book.author}
           >
-            {book?.title}
+            {book.author}
           </div>
         </Tooltip>
       }
@@ -90,9 +90,7 @@ const BookCard = ({
           <Button
             type="primary"
             icon={<ShoppingCartOutlined />}
-            onClick={() => {
-              addToCart(book);
-            }}
+            onClick={addToCart}
             className="buy-button"
             style={{
               borderRadius: "6px",

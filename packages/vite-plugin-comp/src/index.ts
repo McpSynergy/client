@@ -37,6 +37,11 @@ export interface MCPCompData {
   name: string;
   filePath: string;
   propertySchema: Record<string, any>;
+  inputSchema?: {
+    type: string;
+    properties: Record<string, SchemaProperty>;
+    required?: string[];
+  };
   [key: string]: any; // Allow additional properties
 }
 
@@ -456,7 +461,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
   // Helper to parse a single file and extract MCP data
   async function parseFile(
     filePath: string,
-    checker: ts.TypeChecker,
+    _checker: ts.TypeChecker,
   ): Promise<MCPCompData[]> {
     debugLog('--------------------------------');
     debugLog('Parsing file: ' + filePath);
@@ -544,6 +549,61 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           required: [],
         },
       };
+
+      // Helper function to recursively collect input schema properties
+      function collectInputSchemaProperties(
+        interfaceNode: ts.InterfaceDeclaration,
+        _currentPath: string = '',
+        inputProperties: Record<string, SchemaProperty> = {},
+        inputRequired: string[] = []
+      ): { properties: Record<string, SchemaProperty>; required: string[] } {
+        // First, collect input properties from the current interface
+        for (const member of interfaceNode.members) {
+          if (
+            !ts.isPropertySignature(member) ||
+            !member.name ||
+            !ts.isIdentifier(member.name)
+          )
+            continue;
+
+          const propName = member.name.getText(sourceFile);
+          const propTags = ts.getJSDocTags(member);
+          const hasInputRequired = propTags.some(tag => tag.tagName.text === 'mcp-input-required');
+          const hasInputOptional = propTags.some(tag => tag.tagName.text === 'mcp-input-optional');
+
+          if (hasInputRequired || hasInputOptional) {
+            // Get description from JSDoc comment
+            const description = propTags
+              .find(tag => tag.tagName.text === 'mcp-input-required' || tag.tagName.text === 'mcp-input-optional')
+              ?.comment?.toString().trim() || propName;
+
+            // Get the property type
+            let propType: string | string[] = 'any';
+            if (member.type) {
+              const typeText = member.type.getText(sourceFile).replace(/\?/g, '');
+              propType = mapTypeToJsonSchema(typeText);
+            }
+
+            debugLog(`Adding property ${propName} to inputSchema`, {
+              required: hasInputRequired,
+              optional: hasInputOptional,
+              description,
+              type: propType,
+            });
+
+            inputProperties[propName] = {
+              type: propType,
+              description,
+            };
+
+            if (hasInputRequired && !inputRequired.includes(propName)) {
+              inputRequired.push(propName);
+            }
+          }
+        }
+
+        return { properties: inputProperties, required: inputRequired };
+      }
 
       // Process component tags
       const tags = ts.getJSDocTags(node);
@@ -659,6 +719,32 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
           debugLog(`Set property ${tagConfig.to} for ${propName}: ${value}`);
         }
       }
+
+      // Collect input schema properties from all interfaces
+      const inputSchemaResult = collectInputSchemaProperties(node);
+
+      // Also collect from all nested interfaces for this component
+      for (const [key, stored] of storedInterfaces.entries()) {
+        if (stored.componentName === componentName && stored.propPath) {
+          debugLog(`Checking nested interface: ${key}`);
+          const nestedResult = collectInputSchemaProperties(
+            stored.interface,
+            stored.propPath,
+            inputSchemaResult.properties,
+            inputSchemaResult.required
+          );
+          Object.assign(inputSchemaResult.properties, nestedResult.properties);
+          inputSchemaResult.required.push(...nestedResult.required.filter(req => !inputSchemaResult.required.includes(req)));
+        }
+      }
+
+      // Always add inputSchema, even if empty
+      componentInfo.inputSchema = {
+        type: 'object',
+        properties: inputSchemaResult.properties,
+        required: inputSchemaResult.required,
+      };
+      debugLog(`Added inputSchema to ${componentName}:`, componentInfo.inputSchema);
 
       debugLog(
         `Completed processing component: ${componentName}`,
@@ -952,7 +1038,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
     async handleHotUpdate({
       file,
       server,
-      read,
+      read: _read,
     }): Promise<ModuleNode[] | void> {
       // Convert file path to relative path
       const relativeFilePath = path.relative(process.cwd(), file);

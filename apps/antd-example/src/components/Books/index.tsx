@@ -1,9 +1,8 @@
-import Search from "antd/es/input/Search";
-import { Badge } from "antd";
+import { Badge, Input } from "antd";
 import { ShoppingCartOutlined } from "@ant-design/icons";
-import { useState } from "react";
 import BookCard from "./BookCard";
 import styled from "styled-components";
+import { useBooks, useCart } from "../../context/GlobalContext";
 
 const ScrollableContainer = styled.div`
   display: grid;
@@ -102,150 +101,63 @@ const SearchWrapper = styled.div`
   }
 `;
 
-const Books = ({
-  count,
-  addToCart,
-  onViewCart,
-}: {
-  count: number;
-  addToCart: (book: {
-    title: string;
-    author: string;
-    cover: string;
-    price: number;
-  }) => void;
-  onViewCart: VoidFunction;
-}) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const books = [
-    {
-      title: "Computing and Technology Ethics",
-      author: "Emanuelle Burton, Judy Goldsmith, Nicholas Mattei",
-      cover:
-        "\thttps://i.pinimg.com/736x/5b/0d/80/5b0d809c4c6a3cfb5f6f87562f98bf16.jpg",
-      price: 45.99,
-    },
-    {
-      title:
-        "More than a Glitch: Confronting Race, Gender, and Ability Bias in Tech",
-      author: "Meredith Broussard",
-      cover:
-        "https://images-na.ssl-images-amazon.com/images/P/0262547260.01.L.jpg",
-      price: 29.99,
-    },
-    {
-      title: "Working with AI: Real Stories of Human-Machine Collaboration",
-      author: "Thomas H. Davenport & Steven M. Miller",
-      cover:
-        "https://images-na.ssl-images-amazon.com/images/P/0262047519.01.L.jpg",
-      price: 32.99,
-    },
-    {
-      title:
-        "Quantum Supremacy: How the Quantum Computer Revolution Will Change Everything",
-      author: "Michio Kaku",
-      cover:
-        "https://i.pinimg.com/736x/5b/0d/80/5b0d809c4c6a3cfb5f6f87562f98bf16.jpg",
-      price: 28.99,
-    },
-    {
-      title: "Business Success with Open Source",
-      author: "VM (Vicky) Brasseur",
-      cover:
-        "https://images-na.ssl-images-amazon.com/images/P/1680509551.01.L.jpg",
-      price: 39.99,
-    },
-    {
-      title: "The Internet Con: How to Seize the Means of Computation",
-      author: "Cory Doctorow",
-      cover:
-        "https://images-na.ssl-images-amazon.com/images/P/1804291277.01.L.jpg",
-      price: 24.99,
-    },
-    {
-      title:
-        "How Infrastructure Works: Inside the Systems That Shape Our World",
-      author: "Deb Chachra",
-      cover:
-        "https://images-na.ssl-images-amazon.com/images/P/0593086430.01.L.jpg",
-      price: 27.99,
-    },
-    {
-      title: "Extremely Online: The Untold Story of Fame, Influence, and Power",
-      author: "Taylor Lorenz",
-      cover:
-        "https://images-na.ssl-images-amazon.com/images/P/1982146745.01.L.jpg",
-      price: 26.99,
-    },
-    {
-      title: "The Apple II Age: How the Computer Became Personal",
-      author: "Laine Nooney",
-      cover:
-        "https://i.pinimg.com/736x/5b/0d/80/5b0d809c4c6a3cfb5f6f87562f98bf16.jpg",
-      price: 35.99,
-    },
-    {
-      title:
-        "Fancy Bear Goes Phishing: The Dark History of the Information Age",
-      author: "Scott J. Shapiro",
-      cover:
-        "https://i.pinimg.com/736x/5b/0d/80/5b0d809c4c6a3cfb5f6f87562f98bf16.jpg",
-      price: 29.99,
-    },
-  ];
-  const filteredBooks = books.filter(
-    (book) =>
-      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+const Books = ({ onViewCart }: { onViewCart: VoidFunction }) => {
+  const { filteredBooks, searchTerm, setSearchTerm } = useBooks();
+  const { addToCart, itemCount } = useCart();
 
   return (
     <Container>
       <SearchWrapper>
-        <div
-          style={{
-            display: "flex",
-            gap: "16px",
-            alignItems: "center",
-            justifyContent: "center",
-            maxWidth: "1200px",
-            margin: "0 auto",
-          }}
-        >
-          <Search
-            placeholder="Search books..."
-            onSearch={(value) => setSearchTerm(value)}
-            style={{ width: "calc(100% - 100px)" }}
-            size="large"
-          />
-          <Badge
-            count={count}
-            style={{
-              backgroundColor: "hsla(0, 0%, 93%, 1)",
-              color: "#000000",
-              cursor: "pointer",
-            }}
-            onClick={onViewCart}
-          >
-            <ShoppingCartOutlined
-              style={{
-                fontSize: "24px",
-                color: "#FFFFFF",
-              }}
-            />
-          </Badge>
-        </div>
+        <Input
+          placeholder="search book name or author"
+          allowClear
+          size="large"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ width: "100%" }}
+        />
       </SearchWrapper>
       <ScrollableContainer>
         {filteredBooks.map((book) => (
           <BookCard
-            key={book.title + book.author}
+            key={book.id}
             book={book}
-            addToCart={addToCart}
+            addToCart={() => addToCart(book)}
           />
         ))}
       </ScrollableContainer>
+      <div
+        style={{
+          position: "absolute",
+          top: "24px",
+          right: "24px",
+          zIndex: 10,
+        }}
+      >
+        <Badge count={itemCount} size="small">
+          <div
+            style={{
+              backgroundColor: "#1a1a1a",
+              border: "1px solid #333333",
+              borderRadius: "50%",
+              width: "48px",
+              height: "48px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              color: "#ffffff",
+              fontSize: "18px",
+            }}
+            onClick={onViewCart}
+          >
+            <ShoppingCartOutlined />
+          </div>
+        </Badge>
+      </div>
     </Container>
   );
 };
+
 export default Books;
