@@ -120,6 +120,7 @@ const suggestions: SuggestionItems = [
 const Chat = () => {
   const [content, setContent] = React.useState("");
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,6 +137,12 @@ const Chat = () => {
   // Agent for request with XStream
   const [agent] = useXAgent({
     request: async ({ message }, { onSuccess, onUpdate, onError }: any) => {
+      // 创建 AbortController 用于取消请求
+      const abortController = new AbortController();
+
+      // 将 AbortController 存储到 ref 中，以便外部调用
+      abortControllerRef.current = abortController;
+
       try {
         const response = await fetch("/message", {
           method: "POST",
@@ -147,6 +154,7 @@ const Chat = () => {
           body: JSON.stringify({
             messages: [{ role: "user", content: message }],
           }),
+          signal: abortController.signal, // 添加 abort signal
         });
 
         if (!response.ok) {
@@ -242,8 +250,20 @@ const Chat = () => {
         } else {
           onError(new Error("未收到有效响应"));
         }
+
+        // 清理 AbortController ref
+        abortControllerRef.current = null;
       } catch (error) {
+        // 处理取消请求的情况
+        if (error instanceof Error && error.name === "AbortError") {
+          console.log("请求已被取消");
+          // 不调用 onError，因为这是用户主动取消的
+          abortControllerRef.current = null;
+          return;
+        }
         onError(error instanceof Error ? error : new Error(String(error)));
+        // 清理 AbortController ref
+        abortControllerRef.current = null;
       }
     },
   });
@@ -573,6 +593,11 @@ const Chat = () => {
                 setContent("");
               }}
               onCancel={() => {
+                // 取消当前请求
+                if (agent.isRequesting() && abortControllerRef.current) {
+                  abortControllerRef.current.abort();
+                  abortControllerRef.current = null;
+                }
                 setContent("");
               }}
               onKeyDown={onKeyDown}
