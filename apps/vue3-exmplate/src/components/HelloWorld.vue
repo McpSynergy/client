@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineMCPComponent } from '@/utils/mcp'
+import { defineMCPComponent } from '@mcp-synergy/vue'
 import type { Ref } from 'vue'
 
 interface Props {
@@ -12,7 +12,8 @@ const props = defineProps<Props>()
 
 // 使用 defineMCPComponent 函数定义 MCP 配置
 defineMCPComponent({
-  name: 'MyVueComponent',
+  serverName: 'mcp-component-render',
+  name: 'HelloWorld',
   description: '这是一个示例 Vue 组件xxxx',
   version: '1.0.0',
   pickProps: ['msg'],

@@ -1,0 +1,41 @@
+{
+  "name": "@mcp-synergy/vue",
+  "version": "0.0.1",
+  "description": "Vue components for MCP Synergy",
+  "keywords": ["vue", "mcp", "components"],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./static": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/static.js",
+      "require": "./dist/static.cjs"
+    }
+  },
+  "main": "dist/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -b && vite build && BUILD_TYPE=static vite build",
+    "dev": "vite build --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@mcp-synergy/client-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@mcp-synergy/vite-plugin-comp-vue": "workspace:*",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vue": "^3.4.0",
+    "vite": "^6.3.3",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "vue": ">=3.3.0"
+  }
+} 

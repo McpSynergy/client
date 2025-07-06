@@ -1,10 +1,19 @@
-declare module 'virtual:mcp-comp-vue/data.json' {
-  const data: any[];
+declare module 'virtual:mcp-comp-vue/data' {
+  interface ComponentData {
+    name: string;
+    serverName?: string;
+    [key: string]: any;
+  }
+
+  const data: ComponentData[];
   export default data;
 }
 
 declare module 'virtual:mcp-comp-vue/imports' {
-  const imports: Record<string, any>;
+  import type { Component } from 'vue';
+
+  // Export components with safe names (name_serverName format)
+  const imports: Record<string, () => Promise<Component>>;
   export default imports;
 }
 
@@ -52,4 +61,9 @@ declare global {
     };
     [key: string]: any;
   }
+
+  /**
+   * 定义 MCP 组件的配置
+   */
+  function defineMCPComponent(config: MCPComponentConfig): void;
 } 

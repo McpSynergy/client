@@ -1,8 +1,9 @@
 [
   {
-    "name": "MyVueComponent",
+    "name": "HelloWorld",
     "description": "这是一个示例 Vue 组件xxxx",
     "version": "1.0.0",
+    "serverName": "mcp-component-render",
     "filePath": "/Users/yangjie.ugreen/webCode/client/apps/vue3-exmplate/src/components/HelloWorld.vue",
     "propertySchema": {
       "type": "object",

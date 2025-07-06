@@ -297,7 +297,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
   }
 
   // Helper to save schema output to a file
-  async function saveSchemaOuputJson() {
+  async function saveSchemaOutputJson() {
     if (!componentPropSchemaOutputPath) return;
 
     try {
@@ -873,6 +873,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
   return {
     name: 'vite-plugin-mcp-comp',
+    enforce: 'pre',
 
     // Scan files at the start of the build
     async buildStart() {
@@ -931,7 +932,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         Array.from(componentDataMap.entries()),
       );
 
-      await saveSchemaOuputJson();
+      await saveSchemaOutputJson();
 
       if (options.pushConfig) {
         await configService.pushConfig(
@@ -945,7 +946,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
       console.log('Resolving ID:', id);
 
       if (
-        id === 'virtual:mcp-comp/data.json' ||
+        id === 'virtual:mcp-comp/data' ||
         id === 'virtual:mcp-comp/imports'
       ) {
         return '\0' + id;
@@ -955,79 +956,118 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
     load(id) {
       debugLog('Loading module:', id);
-      if (id === '\0virtual:mcp-comp/data.json') {
-        const data = Array.from(componentDataMap.values()).map(
-          ({ filePath, ...rest }) => rest,
-        );
-        debugLog('Generated data.json content:', data);
-        return JSON.stringify(data, null, 2);
+      if (id === '\0virtual:mcp-comp/data') {
+        try {
+          // 确保 componentDataMap 存在
+          if (!componentDataMap) {
+            debugLog('componentDataMap is empty, returning empty array');
+            return `export default [];`;
+          }
+
+          const data = Array.from(componentDataMap.values()).map(
+            ({ filePath, ...rest }) => rest,
+          );
+          debugLog('Generated data.json content:', data);
+
+          // 安全地序列化数据，避免循环引用
+          // @ts-ignore
+          const serializedData = JSON.stringify(data, (key, value) => {
+            // 过滤掉可能导致循环引用的属性
+            if (typeof value === 'function') {
+              return undefined;
+            }
+            if (value instanceof RegExp) {
+              return value.toString();
+            }
+            return value;
+          }, 2);
+
+          return `export default ${serializedData};`;
+        } catch (error) {
+          console.error('Error serializing data.json:', error);
+          debugLog('Serialization failed, returning empty array');
+          return `export default [];`;
+        }
       }
 
       if (id === '\0virtual:mcp-comp/imports') {
-        debugLog('Generating imports for components:', Array.from(componentDataMap.entries()));
+        try {
+          debugLog('Generating imports for components:', Array.from(componentDataMap?.entries() || []));
 
-        if (componentDataMap.size === 0) {
-          console.warn('No components found in componentDataMap');
+          if (!componentDataMap || componentDataMap.size === 0) {
+            console.warn('No components found in componentDataMap');
+            return 'export default {};';
+          }
+
+          if (!lazyImport) {
+            // Generate direct imports
+            const imports = Array.from(componentDataMap.values())
+              .map((comp) => {
+                if (!comp.name) {
+                  console.warn(`Component in ${comp.filePath} has no name, skipping...`);
+                  return '';
+                }
+                const virtualModuleDir = path.dirname(id);
+                const relativePath = path.relative(
+                  virtualModuleDir,
+                  comp.filePath,
+                );
+                const uniqueKey = getComponentKey(comp.name, comp.serverName);
+                const safeExportName = uniqueKey.replace(/[^a-zA-Z0-9_$]/g, '_');
+                const importStatement = `import ${safeExportName} from '${relativePath}';`;
+                debugLog('Generated import statement:', importStatement);
+                return importStatement;
+              })
+              .filter(Boolean)
+              .join('\n');
+
+            const componentExports = Array.from(componentDataMap.entries())
+              .map(([key, comp]) => {
+                if (!comp.name) return '';
+                const safeExportName = key.replace(/[^a-zA-Z0-9_$]/g, '_');
+                return `${safeExportName}`;
+              })
+              .filter(Boolean)
+              .join(', ');
+            const exports = `export { ${componentExports} };`;
+
+            const finalContent = `${imports}\n${exports}`;
+            debugLog('Generated imports content:', finalContent);
+            return finalContent;
+          } else {
+            // Generate lazy imports
+            const lazyImports = Array.from(componentDataMap.values())
+              .map((comp) => {
+                if (!comp.name) {
+                  console.warn(`Component in ${comp.filePath} has no name, skipping...`);
+                  return '';
+                }
+                const virtualModuleDir = path.dirname(id);
+                const relativePath = path.relative(
+                  virtualModuleDir,
+                  comp.filePath,
+                );
+                const uniqueKey = getComponentKey(comp.name, comp.serverName);
+                const safeExportName = uniqueKey.replace(/[^a-zA-Z0-9_$]/g, '_');
+                const lazyImportStatement = `const ${safeExportName} = () => import('${relativePath}');`;
+                debugLog('Generated lazy import statement:', lazyImportStatement);
+                return lazyImportStatement;
+              })
+              .filter(Boolean)
+              .join('\n');
+
+            const componentNames = Array.from(componentDataMap.keys())
+              .map(key => key.replace(/[^a-zA-Z0-9_$]/g, '_'))
+              .join(', ');
+            const exports = `export default { ${componentNames} };`;
+
+            const finalContent = `${lazyImports}\n${exports}`;
+            debugLog('Generated lazy imports content:', finalContent);
+            return finalContent;
+          }
+        } catch (error) {
+          console.error('Error generating imports:', error);
           return 'export default {};';
-        }
-
-        if (!lazyImport) {
-          // Generate direct imports
-          const imports = Array.from(componentDataMap.values())
-            .map((comp) => {
-              if (!comp.name) {
-                console.warn(`Component in ${comp.filePath} has no name, skipping...`);
-                return '';
-              }
-              const virtualModuleDir = path.dirname(id);
-              const relativePath = path.relative(
-                virtualModuleDir,
-                comp.filePath,
-              );
-              const importStatement = `import ${comp.name} from '${relativePath}';`;
-              debugLog('Generated import statement:', importStatement);
-              return importStatement;
-            })
-            .filter(Boolean)
-            .join('\n');
-
-          const componentNames = Array.from(componentDataMap.keys())
-            .filter(key => key.split(':')[0])
-            .join(', ');
-          const exports = `export { ${componentNames} };`;
-
-          const finalContent = `${imports}\n${exports}`;
-          debugLog('Generated imports content:', finalContent);
-          return finalContent;
-        } else {
-          // Generate lazy imports
-          const lazyImports = Array.from(componentDataMap.values())
-            .map((comp) => {
-              if (!comp.name) {
-                console.warn(`Component in ${comp.filePath} has no name, skipping...`);
-                return '';
-              }
-              const virtualModuleDir = path.dirname(id);
-              const relativePath = path.relative(
-                virtualModuleDir,
-                comp.filePath,
-              );
-              const lazyImportStatement = `const ${comp.name} = () => import('${relativePath}');`;
-              debugLog('Generated lazy import statement:', lazyImportStatement);
-              return lazyImportStatement;
-            })
-            .filter(Boolean)
-            .join('\n');
-
-          const componentNames = Array.from(componentDataMap.keys())
-            .filter(key => key.split(':')[0])
-            .map(key => key.split(':')[0])
-            .join(', ');
-          const exports = `export default { ${componentNames} };`;
-
-          const finalContent = `${lazyImports}\n${exports}`;
-          debugLog('Generated lazy imports content:', finalContent);
-          return finalContent;
         }
       }
 
@@ -1060,7 +1100,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
           // Invalidate both virtual modules
           const dataModule = server.moduleGraph.getModuleById(
-            '\0virtual:mcp-comp/data.json',
+            '\0virtual:mcp-comp/data',
           );
           const importsModule = server.moduleGraph.getModuleById(
             '\0virtual:mcp-comp/imports',
@@ -1088,7 +1128,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
             ],
           });
 
-          await saveSchemaOuputJson();
+          await saveSchemaOutputJson();
 
           if (options.pushConfig) {
             await configService.pushConfig(
@@ -1139,7 +1179,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
         if (changed) {
           // Invalidate both virtual modules
           const dataModule = server.moduleGraph.getModuleById(
-            '\0virtual:mcp-comp/data.json',
+            '\0virtual:mcp-comp/data',
           );
           const importsModule = server.moduleGraph.getModuleById(
             '\0virtual:mcp-comp/imports',
@@ -1168,7 +1208,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
               ],
             });
 
-            await saveSchemaOuputJson();
+            await saveSchemaOutputJson();
 
             if (options.pushConfig) {
               await configService.pushConfig(
@@ -1188,7 +1228,7 @@ export function MCPComp(options: MCPCompOptions = {}): Plugin {
 
     // Handle build completion
     async buildEnd() {
-      await saveSchemaOuputJson();
+      await saveSchemaOutputJson();
       // 发送配置
       if (options.pushConfig) {
         await configService.pushConfig(

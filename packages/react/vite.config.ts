@@ -31,12 +31,13 @@ if (process.env.BUILD_TYPE === "static") {
   }
   baseConfig.resolve.alias = {
     "virtual:mcp-comp/imports": "src/empty-imports.ts",
+    "virtual:mcp-comp/data": "src/empty-data.ts",
   };
   (baseConfig as any).build.lib.fileName = "static";
 } else {
   (baseConfig as any).build.rollupOptions.external.push(
     "virtual:mcp-comp/imports",
-    "virtual:mcp-comp/data.json",
+    "virtual:mcp-comp/data",
   );
 }
 

@@ -9,6 +9,7 @@
   "main": "index.js",
   "scripts": {
     "build": "turbo build",
+    "build:lib": "pnpm recursive exec pnpm run build",
     "dev": "turbo dev",
     "postinstall": "syncpack list-mismatches"
   },

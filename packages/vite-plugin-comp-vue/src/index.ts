@@ -634,6 +634,7 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
 
   return {
     name: 'vite-plugin-mcp-comp-vue',
+    enforce: 'pre',
 
     async buildStart() {
       console.log('MCP Vue 插件开始构建...');
@@ -671,7 +672,7 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
 
     resolveId(id) {
       if (
-        id === 'virtual:mcp-comp-vue/data.json' ||
+        id === 'virtual:mcp-comp-vue/data' ||
         id === 'virtual:mcp-comp-vue/imports'
       ) {
         return '\0' + id;
@@ -682,63 +683,99 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
     load(id) {
       debugLog('加载模块:', id);
 
-      if (id === '\0virtual:mcp-comp-vue/data.json') {
-        const data = Array.from(componentDataMap.values()).map(
-          ({ filePath, ...rest }) => rest,
-        );
-        debugLog('生成 data.json 内容:', data);
-        return JSON.stringify(data, null, 2);
+      if (id === '\0virtual:mcp-comp-vue/data') {
+        try {
+          // 确保 componentDataMap 存在
+          if (!componentDataMap) {
+            debugLog('componentDataMap 为空，返回空数组');
+            return `export default [];`;
+          }
+
+          const data = Array.from(componentDataMap.values()).map(
+            ({ filePath, ...rest }) => rest,
+          );
+          debugLog('生成 data.json 内容:', data);
+
+          // 安全地序列化数据，避免循环引用
+          const serializedData = JSON.stringify(data, (key, value) => {
+            // 过滤掉可能导致循环引用的属性
+            if (typeof value === 'function') {
+              return undefined;
+            }
+            if (value instanceof RegExp) {
+              return value.toString();
+            }
+            return value;
+          }, 2);
+
+          return `export default ${serializedData};`;
+        } catch (error) {
+          console.error('序列化 data.json 时出错:', error);
+          debugLog('序列化失败，返回空数组');
+          return `export default [];`;
+        }
       }
 
       if (id === '\0virtual:mcp-comp-vue/imports') {
-        debugLog('为组件生成导入:', Array.from(componentDataMap.entries()));
+        try {
+          debugLog('为组件生成导入:', Array.from(componentDataMap?.entries() || []));
 
-        if (componentDataMap.size === 0) {
-          console.warn('在 componentDataMap 中未找到组件');
+          if (!componentDataMap || componentDataMap.size === 0) {
+            console.warn('在 componentDataMap 中未找到组件');
+            return 'export default {};';
+          }
+
+          if (!lazyImport) {
+            const imports = Array.from(componentDataMap.values())
+              .map((comp) => {
+                if (!comp.name) {
+                  console.warn(`${comp.filePath} 中的组件没有名称，跳过...`);
+                  return '';
+                }
+                const virtualModuleDir = path.dirname(id);
+                const relativePath = path.relative(virtualModuleDir, comp.filePath);
+                return `import ${comp.name} from '${relativePath}';`;
+              })
+              .filter(Boolean)
+              .join('\n');
+
+            const componentExports = Array.from(componentDataMap.entries())
+              .map(([key, comp]) => {
+                if (!comp.name) return '';
+                const safeExportName = key.replace(/[^a-zA-Z0-9_$]/g, '_');
+                return `${comp.name} as ${safeExportName}`;
+              })
+              .filter(Boolean)
+              .join(', ');
+            const exports = `export { ${componentExports} };`;
+
+            return `${imports}\n${exports}`;
+          } else {
+            const lazyImports = Array.from(componentDataMap.values())
+              .map((comp) => {
+                if (!comp.name) {
+                  console.warn(`${comp.filePath} 中的组件没有名称，跳过...`);
+                  return '';
+                }
+                const virtualModuleDir = path.dirname(id);
+                const relativePath = path.relative(virtualModuleDir, comp.filePath);
+                const uniqueKey = getComponentKey(comp.name, comp.serverName);
+                const safeExportName = uniqueKey.replace(/[^a-zA-Z0-9_$]/g, '_');
+                return `const ${safeExportName} = () => import('${relativePath}');`;
+              })
+              .filter(Boolean)
+              .join('\n');
+
+            const componentNames = Array.from(componentDataMap.keys())
+              .map(key => key.replace(/[^a-zA-Z0-9_$]/g, '_'))
+              .join(', ');
+            const exports = `export default { ${componentNames} };`;
+
+            return `${lazyImports}\n${exports}`;
+          }
+        } catch (error) {
+          console.error('生成导入时出错:', error);
           return 'export default {};';
-        }
-
-        if (!lazyImport) {
-          const imports = Array.from(componentDataMap.values())
-            .map((comp) => {
-              if (!comp.name) {
-                console.warn(`${comp.filePath} 中的组件没有名称，跳过...`);
-                return '';
-              }
-              const virtualModuleDir = path.dirname(id);
-              const relativePath = path.relative(virtualModuleDir, comp.filePath);
-              return `import ${comp.name} from '${relativePath}';`;
-            })
-            .filter(Boolean)
-            .join('\n');
-
-          const componentNames = Array.from(componentDataMap.keys())
-            .filter(key => key.split(':')[0])
-            .join(', ');
-          const exports = `export { ${componentNames} };`;
-
-          return `${imports}\n${exports}`;
-        } else {
-          const lazyImports = Array.from(componentDataMap.values())
-            .map((comp) => {
-              if (!comp.name) {
-                console.warn(`${comp.filePath} 中的组件没有名称，跳过...`);
-                return '';
-              }
-              const virtualModuleDir = path.dirname(id);
-              const relativePath = path.relative(virtualModuleDir, comp.filePath);
-              return `const ${comp.name} = () => import('${relativePath}');`;
-            })
-            .filter(Boolean)
-            .join('\n');
-
-          const componentNames = Array.from(componentDataMap.keys())
-            .filter(key => key.split(':')[0])
-            .map(key => key.split(':')[0])
-            .join(', ');
-          const exports = `export default { ${componentNames} };`;
-
-          return `${lazyImports}\n${exports}`;
         }
       }
 
@@ -777,7 +814,7 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
           }
 
           if (changed) {
-            const dataModule = server.moduleGraph.getModuleById('\0virtual:mcp-comp-vue/data.json');
+            const dataModule = server.moduleGraph.getModuleById('\0virtual:mcp-comp-vue/data');
             const importsModule = server.moduleGraph.getModuleById('\0virtual:mcp-comp-vue/imports');
 
             if (dataModule) server.moduleGraph.invalidateModule(dataModule);

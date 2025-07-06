@@ -1,3 +1,7 @@
+
+// 导入 client-core 中的全局类型声明
+import '@mcp-synergy/client-core';
+
 interface MCPComponentConfig {
   /** 组件名称 */
   name: string;
@@ -6,7 +10,8 @@ interface MCPComponentConfig {
   /** 组件版本 */
   version?: string;
   /** 服务器名称 */
-  serverName?: string;
+  serverName: string;
+  pickProps?: string[];
   /** 输入 Schema 配置 */
   inputSchema?: {
     /** 必需的属性列表 */
@@ -36,3 +41,5 @@ export function defineMCPComponent(config: MCPComponentConfig): MCPComponentConf
 }
 
 export type { MCPComponentConfig };
+export { default as ChatComponent } from './ChatComponent.vue';
+export * from './composables'; 
