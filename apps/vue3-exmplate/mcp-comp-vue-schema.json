@@ -1,0 +1,31 @@
+[
+  {
+    "name": "MyVueComponent",
+    "description": "这是一个示例 Vue 组件xxxx",
+    "version": "1.0.0",
+    "filePath": "/Users/yangjie.ugreen/webCode/client/apps/vue3-exmplate/src/components/HelloWorld.vue",
+    "propertySchema": {
+      "type": "object",
+      "properties": {
+        "msg": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "msg"
+      ]
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "用户名称"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  }
+]
