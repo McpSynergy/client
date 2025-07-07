@@ -34,6 +34,11 @@ export const ChatComponent = ({
   fallback = <div>Validating component...</div>,
   errorFallback = <div>Failed to validate component</div>,
 }: ChatComponentProps) => {
+  console.log({
+    name,
+    serverName,
+  });
+
   const safeExportName = clientCore.getSafeExportName(name, serverName);
   const DynamicComponent = useState(() =>
     lazy(() => MCPComponentImports[safeExportName]()),

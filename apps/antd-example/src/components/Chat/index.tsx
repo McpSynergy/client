@@ -8,7 +8,7 @@ import {
   useXChat,
   XStream,
 } from "@ant-design/x";
-import { ChatComponent } from "@mcp-synergy/react";
+import { ChatComponent } from "../../../../../packages/react/src";
 import { Flex, Typography, type GetProp } from "antd";
 import React, { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
@@ -513,6 +513,7 @@ const Chat = () => {
             <ChatComponent
               name={metaInfo.toolName}
               props={props}
+              serverName={metaInfo.serverName}
               fallback={<></>}
             />
           )}
@@ -529,6 +530,7 @@ const Chat = () => {
           {renderMarkdown(content?.content ?? content)}
           <ChatComponent
             name={legacyMeta.toolName}
+            serverName={legacyMeta.serverName}
             props={props}
             fallback={<></>}
           />
