@@ -22,6 +22,8 @@ export class ConfigPushService {
   }) {
     const { serverUrl, projectId, env, headers, ...rest } = options;
     try {
+      console.log("【开始推送配置】");
+
       await fetch(options.serverUrl, {
         method: 'POST',
         headers: {

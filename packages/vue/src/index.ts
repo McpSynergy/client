@@ -18,6 +18,7 @@ interface MCPComponentConfig {
     required?: string[];
     /** 自定义属性配置 */
     properties?: Record<string, {
+      type?: string | string[];
       description?: string;
       default?: any;
       enum?: any[];

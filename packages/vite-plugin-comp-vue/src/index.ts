@@ -87,6 +87,7 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
 
   const configService = ConfigPushService.getInstance();
   let componentDataMap = new Map<string, MCPCompVueData>();
+  let command: 'serve' | 'build' = 'serve'; // 默认为 serve 模式
 
   function debugLog(message: string, data?: any) {
     if (debug) {
@@ -199,6 +200,12 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
     if (cleanType.startsWith("'") && cleanType.endsWith("'") ||
       cleanType.startsWith('"') && cleanType.endsWith('"')) {
       return 'string';
+    }
+
+    // 检测可能的 enum 类型（通常以大写字母开头）
+    if (/^[A-Z][a-zA-Z0-9]*$/.test(cleanType)) {
+      debugLog(`可能的 enum 类型: ${cleanType}`);
+      return 'string'; // 假设是字符串枚举
     }
 
     // 数字字面量
@@ -364,6 +371,14 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
                         propConfig[configKey] = configProp.value.value;
                       } else if (t.isBooleanLiteral(configProp.value)) {
                         propConfig[configKey] = configProp.value.value;
+                      } else if (t.isArrayExpression(configProp.value)) {
+                        // 处理数组类型，如 enum: ['value1', 'value2']
+                        const arrayValues = configProp.value.elements
+                          .filter((el): el is t.StringLiteral | t.NumericLiteral | t.BooleanLiteral =>
+                            t.isStringLiteral(el) || t.isNumericLiteral(el) || t.isBooleanLiteral(el))
+                          .map(el => el.value);
+                        propConfig[configKey] = arrayValues;
+                        debugLog(`解析到数组属性 ${configKey}:`, arrayValues);
                       }
                     }
                   });
@@ -384,7 +399,7 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
 
 
 
-  // 解析 Vue Props 接口
+  // 解析 Vue Props 接口 - 使用增强的 TypeScript 解析
   function parseVuePropsInterface(scriptContent: string, pickProps: string[] = []): {
     properties: Record<string, SchemaProperty>;
     required: string[];
@@ -392,9 +407,180 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
     const properties: Record<string, SchemaProperty> = {};
     const required: string[] = [];
 
-    debugLog('开始解析 Vue Props 接口');
+    debugLog('开始解析 Vue Props 接口 (使用增强的 TypeScript 解析)');
     debugLog('pickProps 配置:', pickProps);
-    debugLog('Script 内容 (Props 解析):', scriptContent);
+
+    // 全局 AST 变量，用于类型引用解析
+    let globalAST: any = null;
+
+    // 解析引用的接口类型
+    function parseReferencedInterface(typeName: string): SchemaProperty | null {
+      if (!globalAST) {
+        debugLog(`无法解析引用类型 ${typeName}：AST 不可用`);
+        return null;
+      }
+
+      let interfaceSchema: SchemaProperty | null = null;
+
+      _traverse(globalAST, {
+        TSInterfaceDeclaration(path: any) {
+          if (path.node.id.name === typeName) {
+            debugLog(`找到引用的接口定义: ${typeName}`);
+
+            const interfaceBody = path.node.body;
+            if (t.isTSInterfaceBody(interfaceBody)) {
+              const properties: Record<string, SchemaProperty> = {};
+              const required: string[] = [];
+
+              for (const member of interfaceBody.body) {
+                if (t.isTSPropertySignature(member) && t.isIdentifier(member.key)) {
+                  const propName = member.key.name;
+                  const isOptional = !!member.optional;
+                  const typeAnnotation = member.typeAnnotation;
+
+                  if (typeAnnotation && t.isTSTypeAnnotation(typeAnnotation)) {
+                    const propertySchema = parseTypeAnnotationToSchema(typeAnnotation.typeAnnotation);
+
+                    if (propertySchema) {
+                      properties[propName] = propertySchema;
+
+                      if (!isOptional) {
+                        required.push(propName);
+                      }
+
+                      debugLog(`解析引用接口属性: ${propName}`, {
+                        optional: isOptional,
+                        required: !isOptional,
+                        schema: propertySchema,
+                      });
+                    }
+                  }
+                }
+              }
+
+              interfaceSchema = {
+                type: 'object',
+                properties,
+                required: required.length > 0 ? required : undefined
+              };
+            }
+          }
+        }
+      });
+
+      return interfaceSchema;
+    }
+
+    // 解析 TypeScript 类型注解到 JSON Schema
+    function parseTypeAnnotationToSchema(typeAnnotation: any): SchemaProperty | null {
+      debugLog('解析类型注解:', typeAnnotation.type);
+
+      // 基本类型
+      if (t.isTSStringKeyword(typeAnnotation)) {
+        return { type: 'string' };
+      }
+      if (t.isTSNumberKeyword(typeAnnotation)) {
+        return { type: 'number' };
+      }
+      if (t.isTSBooleanKeyword(typeAnnotation)) {
+        return { type: 'boolean' };
+      }
+      if (t.isTSArrayType(typeAnnotation)) {
+        const elementType = parseTypeAnnotationToSchema(typeAnnotation.elementType);
+        return {
+          type: 'array',
+          items: elementType || { type: 'any' }
+        };
+      }
+
+      // 对象类型字面量
+      if (t.isTSTypeLiteral(typeAnnotation)) {
+        const properties: Record<string, SchemaProperty> = {};
+        const required: string[] = [];
+
+        for (const member of typeAnnotation.members) {
+          if (t.isTSPropertySignature(member) && t.isIdentifier(member.key)) {
+            const propName = member.key.name;
+            const isOptional = !!member.optional;
+            const typeAnnotationInner = member.typeAnnotation;
+
+            if (typeAnnotationInner && t.isTSTypeAnnotation(typeAnnotationInner)) {
+              const propertySchema = parseTypeAnnotationToSchema(typeAnnotationInner.typeAnnotation);
+
+              if (propertySchema) {
+                properties[propName] = propertySchema;
+
+                // 如果不是可选的，就是必需的
+                if (!isOptional) {
+                  required.push(propName);
+                }
+
+                debugLog(`解析嵌套属性: ${propName}`, {
+                  optional: isOptional,
+                  required: !isOptional,
+                  schema: propertySchema,
+                });
+              }
+            }
+          }
+        }
+
+        return {
+          type: 'object',
+          properties,
+          required: required.length > 0 ? required : undefined
+        };
+      }
+
+      // 联合类型
+      if (t.isTSUnionType(typeAnnotation)) {
+        const types = typeAnnotation.types
+          .map((type: any) => parseTypeAnnotationToSchema(type))
+          .filter((schema: any) => schema !== null)
+          .map((schema: any) => schema.type)
+          .filter((type: string, index: number, self: string[]) => self.indexOf(type) === index); // 去重
+
+        if (types.length === 1) {
+          return { type: types[0] };
+        } else if (types.length > 1) {
+          return { type: types };
+        }
+      }
+
+      // 字面量类型
+      if (t.isTSLiteralType(typeAnnotation)) {
+        const literal = typeAnnotation.literal;
+        if (t.isStringLiteral(literal)) {
+          return { type: 'string', enum: [literal.value] };
+        }
+        if (t.isNumericLiteral(literal)) {
+          return { type: 'number', enum: [literal.value] };
+        }
+        if (t.isBooleanLiteral(literal)) {
+          return { type: 'boolean', enum: [literal.value] };
+        }
+      }
+
+      // TypeScript 类型引用（包括接口和 Enum）
+      if (t.isTSTypeReference(typeAnnotation) && t.isIdentifier(typeAnnotation.typeName)) {
+        const typeName = typeAnnotation.typeName.name;
+        debugLog(`检测到类型引用: ${typeName}`);
+
+        // 尝试解析引用的接口类型
+        const referencedSchema = parseReferencedInterface(typeName);
+        if (referencedSchema) {
+          debugLog(`成功解析引用类型 ${typeName}:`, referencedSchema);
+          return referencedSchema;
+        }
+
+        // 如果无法解析，假设是 enum 或其他类型
+        return { type: 'string', description: `Referenced type: ${typeName}` };
+      }
+
+      // 其他类型
+      debugLog('未识别的类型注解:', typeAnnotation.type);
+      return { type: 'any' };
+    }
 
     // 如果没有指定 pickProps，返回空的 properties
     if (pickProps.length === 0) {
@@ -412,12 +598,151 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
     const propsType = definePropsMatch[1].trim();
     debugLog('找到 Props 类型:', propsType);
 
+    try {
+      // 使用 @babel/parser 解析 TypeScript 代码
+      const ast = babelParse(scriptContent, {
+        sourceType: 'module',
+        plugins: ['typescript', 'jsx']
+      });
+
+      // 设置全局 AST
+      globalAST = ast;
+
+      // 先检查是否是内联类型对象
+      if (propsType.startsWith('{') && propsType.endsWith('}')) {
+        debugLog('检测到内联类型对象，直接解析');
+        // 解析内联类型对象
+        const inlineTypeAST = babelParse(`type InlineProps = ${propsType}`, {
+          sourceType: 'module',
+          plugins: ['typescript', 'jsx']
+        });
+
+        _traverse(inlineTypeAST, {
+          TSTypeAliasDeclaration(path: any) {
+            if (path.node.id.name === 'InlineProps' && t.isTSTypeLiteral(path.node.typeAnnotation)) {
+              const typeLiteral = path.node.typeAnnotation;
+              for (const member of typeLiteral.members) {
+                if (t.isTSPropertySignature(member) && t.isIdentifier(member.key)) {
+                  const propName = member.key.name;
+
+                  // 过滤：只处理 pickProps 中指定的属性
+                  if (!pickProps.includes(propName)) {
+                    debugLog(`跳过属性: ${propName} (不在 pickProps 中)`);
+                    continue;
+                  }
+
+                  const isOptional = !!member.optional;
+                  const typeAnnotation = member.typeAnnotation;
+
+                  if (typeAnnotation && t.isTSTypeAnnotation(typeAnnotation)) {
+                    const propertySchema = parseTypeAnnotationToSchema(typeAnnotation.typeAnnotation);
+
+                    if (propertySchema) {
+                      properties[propName] = propertySchema;
+
+                      // 如果不是可选的，就是必需的
+                      if (!isOptional) {
+                        required.push(propName);
+                      }
+
+                      debugLog(`解析内联属性: ${propName}`, {
+                        optional: isOptional,
+                        required: !isOptional,
+                        schema: propertySchema,
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+      } else {
+        // 遍历 AST 查找命名接口定义
+        _traverse(ast, {
+          TSInterfaceDeclaration(path: any) {
+            if (path.node.id.name === propsType) {
+              debugLog(`找到接口定义: ${propsType}`);
+
+              // 解析接口体
+              const interfaceBody = path.node.body;
+              if (t.isTSInterfaceBody(interfaceBody)) {
+                for (const member of interfaceBody.body) {
+                  if (t.isTSPropertySignature(member) && t.isIdentifier(member.key)) {
+                    const propName = member.key.name;
+
+                    // 过滤：只处理 pickProps 中指定的属性
+                    if (!pickProps.includes(propName)) {
+                      debugLog(`跳过属性: ${propName} (不在 pickProps 中)`);
+                      continue;
+                    }
+
+                    const isOptional = !!member.optional;
+                    const typeAnnotation = member.typeAnnotation;
+
+                    if (typeAnnotation && t.isTSTypeAnnotation(typeAnnotation)) {
+                      const propertySchema = parseTypeAnnotationToSchema(typeAnnotation.typeAnnotation);
+
+                      if (propertySchema) {
+                        properties[propName] = propertySchema;
+
+                        // 如果不是可选的，就是必需的
+                        if (!isOptional) {
+                          required.push(propName);
+                        }
+
+                        debugLog(`解析属性: ${propName}`, {
+                          optional: isOptional,
+                          required: !isOptional,
+                          schema: propertySchema,
+                        });
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('TypeScript 解析失败:', error);
+      debugLog('回退到简单的正则表达式解析');
+      return parseVuePropsInterfaceSimple(scriptContent, pickProps);
+    }
+
+    debugLog('最终解析的属性:', properties);
+    debugLog('必需的属性:', required);
+    return { properties, required };
+  }
+
+
+
+  // 回退的简单正则表达式解析（保留原有逻辑作为备用）
+  function parseVuePropsInterfaceSimple(scriptContent: string, pickProps: string[] = []): {
+    properties: Record<string, SchemaProperty>;
+    required: string[];
+  } {
+    const properties: Record<string, SchemaProperty> = {};
+    const required: string[] = [];
+
+    debugLog('使用简单的正则表达式解析');
+
+    // 匹配 defineProps 调用
+    const definePropsMatch = scriptContent.match(/defineProps<\s*([^>]+)\s*>\s*\(\)/);
+    if (!definePropsMatch) {
+      debugLog('未找到 defineProps 调用');
+      return { properties, required };
+    }
+
+    const propsType = definePropsMatch[1].trim();
+    debugLog('找到 Props 类型:', propsType);
+
     // 更灵活的接口匹配，支持多种格式
     const interfaceRegexes = [
-      new RegExp(`interface\\s+${propsType}\\s*\\{([^}]+)\\}`, 's'),
       new RegExp(`interface\\s+${propsType}\\s*\\{([\\s\\S]*?)\\}`, 'g'),
       // 如果 propsType 就是 "Props"，直接匹配
-      /interface\s+Props\s*\{([^}]+)\}/s,
       /interface\s+Props\s*\{([\s\S]*?)\}/g
     ];
 
@@ -602,10 +927,16 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
       componentDataMap = new Map();
     }
 
-    // 移除同一文件的现有条目
-    for (const [key, value] of componentDataMap.entries()) {
-      if (value.filePath === newData[0]?.filePath) {
-        componentDataMap.delete(key);
+    // 如果有新数据，收集所有涉及的文件路径
+    if (newData.length > 0) {
+      const filePaths = new Set(newData.map(data => data.filePath));
+
+      // 移除这些文件的现有条目
+      for (const [key, value] of componentDataMap.entries()) {
+        if (filePaths.has(value.filePath)) {
+          componentDataMap.delete(key);
+          debugLog(`删除旧的组件数据: ${key}，来自 ${value.filePath}`);
+        }
       }
     }
 
@@ -636,6 +967,10 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
     name: 'vite-plugin-mcp-comp-vue',
     enforce: 'pre',
 
+    configResolved(config) {
+      command = config.command
+    },
+
     async buildStart() {
       console.log('MCP Vue 插件开始构建...');
       const files = await glob(include, { ignore: exclude });
@@ -662,7 +997,8 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
 
       await saveSchemaOutputJson();
 
-      if (options.pushConfig) {
+      // 只在 serve 模式下推送配置
+      if (options.pushConfig && command === 'serve') {
         await configService.pushConfig(
           Array.from(componentDataMap.values()),
           options.pushConfig
@@ -822,7 +1158,8 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
 
             await saveSchemaOutputJson();
 
-            if (options.pushConfig) {
+            // 只在 serve 模式下推送配置
+            if (options.pushConfig && command === 'serve') {
               await configService.pushConfig(
                 Array.from(componentDataMap.values()),
                 options.pushConfig
@@ -838,7 +1175,8 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
     async buildEnd() {
       await saveSchemaOutputJson();
 
-      if (options.pushConfig) {
+      // 只在 serve 模式下推送配置
+      if (options.pushConfig && command === 'serve') {
         await configService.pushConfig(
           Array.from(componentDataMap.values()),
           options.pushConfig
