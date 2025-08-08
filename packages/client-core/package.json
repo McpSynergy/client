@@ -1,7 +1,6 @@
 {
   "name": "@mcp-synergy/client-core",
   "version": "0.0.1",
-  "private": true,
   "description": "",
   "keywords": [],
   "license": "ISC",

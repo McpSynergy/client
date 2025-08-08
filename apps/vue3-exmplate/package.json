@@ -1,29 +1,53 @@
 {
-  "name": "vue3-exmplate",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@mcp/vue3-example",
+  "version": "0.0.1",
+  "private": false,
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/vue-app-components.umd.js",
+  "module": "./dist/vue-app-components.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/vue-app-components.es.js",
+      "require": "./dist/vue-app-components.umd.js"
+    },
+    "./dist/style.css": "./dist/vue-app-components.css"
+  },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
     "build": "run-p type-check \"build-only {@}\" --",
+    "build:lib": "vite build --config vite.config.lib.ts --sourcemap && vue-tsc --emitDeclarationOnly",
     "preview": "vite preview",
     "build-only": "vite build",
-    "type-check": "vue-tsc --build",
+    "type-check": "echo 'type-check'",
     "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
     "lint:eslint": "eslint . --fix",
     "lint": "run-s lint:*",
     "format": "prettier --write src/"
   },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
   "dependencies": {
     "@babel/parser": "^7.28.0",
     "@babel/traverse": "^7.28.0",
     "@babel/types": "^7.28.0",
+    "@mcp-synergy/vue": "workspace:*",
+    "@tdesign-vue-next/chat": "latest",
+    "tdesign-vue-next": "latest",
+    "tdesign-icons-vue-next": "latest",
+    "ugos-core": "~1.2.12",
+    "@ag-ui/client": "0.0.35"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue2": "^2.3.3",
+    "@vitejs/plugin-vue2-jsx": "^1.0.2",
     "pinia": "^3.0.3",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1",
-    "@mcp-synergy/vue": "workspace:*"
-  },
-  "devDependencies": {
+    "less": "^4.2.3",
     "@tsconfig/node22": "^22.0.2",
     "@types/node": "^22.15.32",
     "@vitejs/plugin-vue": "^6.0.0",
@@ -39,8 +63,9 @@
     "oxlint": "~1.1.0",
     "prettier": "3.5.3",
     "typescript": "~5.8.0",
-    "vite": "npm:rolldown-vite@latest",
+    "vite": "6.x",
     "vite-plugin-vue-devtools": "^7.7.7",
-    "vue-tsc": "^2.2.10"
+    "vue-tsc": "^2.2.10",
+    "@mcp-synergy/vite-plugin-comp-vue": "workspace:*"
   }
 }

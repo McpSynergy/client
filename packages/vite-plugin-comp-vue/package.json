@@ -1,6 +1,6 @@
 {
   "name": "@mcp-synergy/vite-plugin-comp-vue",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "description": "Vite plugin for Vue component analysis and MCP integration",
   "keywords": [
     "vite",
@@ -15,7 +15,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "types.d.ts"
+    "types.d.ts",
+    "package.json"
   ],
   "scripts": {
     "build": "tsc -b --declaration",

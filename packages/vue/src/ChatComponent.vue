@@ -65,7 +65,11 @@ export default defineComponent({
     );
 
     const DynamicComponent = computed(() => {
+      console.log("MCPComponentImports", MCPComponentImports);
+
       const componentLoader = MCPComponentImports[safeExportName.value];
+      console.log("componentLoader", componentLoader);
+
       if (!componentLoader) {
         throw new Error(`Component not found: ${safeExportName.value}`);
       }

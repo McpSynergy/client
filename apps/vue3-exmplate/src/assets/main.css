@@ -3,7 +3,7 @@
 #app {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  /* padding: 2rem; */
   font-weight: normal;
 }
 
@@ -21,15 +21,15 @@ a,
   }
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
+.t-image__wrapper {
+  z-index: inherit !important;
+}
+
+.t-image__error {
+  z-index: inherit !important;
+}
+
+.t-image__loading {
+  z-index: inherit !important;
 }

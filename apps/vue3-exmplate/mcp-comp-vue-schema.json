@@ -1,31 +1,203 @@
 [
   {
-    "name": "HelloWorld",
-    "description": "这是一个示例 Vue 组件xxxx",
-    "version": "1.0.0",
+    "name": "MediaCard",
+    "description": "电影卡片组件，用于展示电影的基本信息并提供播放、收藏、分享等交互功能。",
     "serverName": "mcp-component-render",
-    "filePath": "/Users/yangjie.ugreen/webCode/client/apps/vue3-exmplate/src/components/HelloWorld.vue",
+    "filePath": "/Users/yangjie.ugreen/webCode/client/apps/vue3-exmplate/src/components/MediaCard.vue",
     "propertySchema": {
       "type": "object",
       "properties": {
-        "msg": {
-          "type": "string"
+        "movie": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "poster": {
+              "type": "string"
+            },
+            "year": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "string"
+            },
+            "rating": {
+              "type": "string"
+            },
+            "genre": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nasProps": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "ext": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "name",
+                "ext",
+                "type"
+              ]
+            },
+            "command": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "description",
+            "poster",
+            "year",
+            "duration",
+            "rating",
+            "genre",
+            "nasProps"
+          ]
         }
       },
       "required": [
-        "msg"
+        "movie"
       ]
     },
     "inputSchema": {
       "type": "object",
       "properties": {
-        "name": {
+        "title": {
           "type": "string",
-          "description": "用户名称"
+          "description": "电影标题，必填字段。参数名必须保持为\"title\"，不得翻译为其他语言。title 不能包含 电影 字符串"
+        },
+        "command": {
+          "type": "string",
+          "enum": [
+            "play",
+            "open",
+            "none"
+          ],
+          "description": "电影操作命令 enum, play: 播放电影,open: 打开电影,none: 查询或者搜索或者无操作命令",
+          "default": "none"
         }
       },
       "required": [
-        "name"
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "MusicCard",
+    "description": "音乐卡片组件，用于展示音乐的基本信息并提供播放、收藏、分享等交互功能。",
+    "serverName": "mcp-component-render",
+    "filePath": "/Users/yangjie.ugreen/webCode/client/apps/vue3-exmplate/src/components/MusicCard.vue",
+    "propertySchema": {
+      "type": "object",
+      "properties": {
+        "musicData": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "artist": {
+              "type": "string"
+            },
+            "cover": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "number"
+            },
+            "url": {
+              "type": "string"
+            },
+            "nasProps": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "ext": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "desc": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "name",
+                "ext",
+                "type",
+                "desc"
+              ]
+            },
+            "command": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "artist",
+            "cover",
+            "duration",
+            "nasProps"
+          ]
+        }
+      },
+      "required": [
+        "musicData"
+      ]
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "enum": [
+            "play",
+            "open",
+            "none"
+          ],
+          "description": "音乐操作命令 enum, play: 播放音乐,open: 打开音乐,none: 查询或者搜索或者无操作命令",
+          "default": "none"
+        },
+        "title": {
+          "type": "string",
+          "description": "音乐标题，必填字段。参数名必须保持为\"title\"，不得翻译为其他语言。title 不能包含 电影 字符串"
+        }
+      },
+      "required": [
+        "title"
       ]
     }
   }

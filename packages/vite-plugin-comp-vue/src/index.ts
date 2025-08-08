@@ -3,7 +3,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { parse } from '@vue/compiler-sfc';
 import type { ModuleNode, Plugin } from 'vite';
-import { ConfigPushService } from './server';
 
 // 使用 @babel/parser 进行更可靠的 JavaScript 解析
 import { parse as babelParse } from '@babel/parser';
@@ -74,6 +73,64 @@ interface MCPComponentConfig {
     properties?: Record<string, Partial<SchemaProperty>>;
   };
   [key: string]: any;
+}
+
+
+class ConfigPushService {
+  private static instance: ConfigPushService;
+  private configCache: Map<string, any> = new Map();
+
+  private constructor() { }
+
+  static getInstance() {
+    if (!this.instance) {
+      this.instance = new ConfigPushService();
+    }
+    return this.instance;
+  }
+
+  // 推送配置到后端
+  async pushConfig(config: any, options: {
+    serverUrl: string;
+    projectId: string;
+    env?: string;
+    headers?: Record<string, string>;
+    [key: string]: any;
+  }) {
+    const { serverUrl, projectId, env, headers, ...rest } = options;
+    try {
+      console.log("【开始推送配置】");
+
+      await fetch(options.serverUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          projectId: options.projectId,
+          env: options.env || 'development',
+          config: config.map((c: any) => {
+            // 剔除 filePath
+            const { filePath, ...rest } = c;
+            return rest;
+          }),
+          timestamp: Date.now(),
+          ...rest,
+        })
+      });
+
+      this.configCache.set(options.projectId, config);
+      return true;
+    } catch (error) {
+      console.error('配置推送错误:', error);
+      return false;
+    }
+  }
+
+  getCachedConfig(projectId: string) {
+    return this.configCache.get(projectId);
+  }
 }
 
 export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
@@ -1084,6 +1141,7 @@ export function MCPCompVue(options: MCPCompVueOptions = {}): Plugin {
               .filter(Boolean)
               .join(', ');
             const exports = `export { ${componentExports} };`;
+            console.log("componentExports", componentExports);
 
             return `${imports}\n${exports}`;
           } else {
